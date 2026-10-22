@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hash Generator - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Flare</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Hash Generator</h1>
+        <p>Generate SHA-256, SHA-384, or SHA-512 hashes from your text.</p>
+
+        <div class="control-group">
+            <label for="textInput">Input Text</label>
+            <textarea id="textInput" class="tool-textarea" rows="6" placeholder="Enter text to hash..."></textarea>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:15px;align-items:end;flex-wrap:wrap;">
+            <div>
+                <label for="algorithm">Algorithm</label>
+                <select id="algorithm" style="padding:8px 12px;border:1px solid #ccc;border-radius:6px;">
+                    <option value="SHA-256">SHA-256</option>
+                    <option value="SHA-384">SHA-384</option>
+                    <option value="SHA-512">SHA-512</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button id="hashBtn" class="btn-tool">Generate Hash</button>
+                <button id="copyBtn" class="btn-secondary">Copy Hash</button>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area">
+            <label>Hash Output (Hex)</label>
+            <pre class="output-content" id="output" style="word-break:break-all;white-space:pre-wrap;"></pre>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const textInput = document.getElementById('textInput');
+        const output = document.getElementById('output');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        async function generateHash() {
+            const text = textInput.value;
+            if (!text) {
+                ToolUtils.showStatus(statusMsg, 'Please enter text to hash.', 'error');
+                output.textContent = '';
+                return;
+            }
+            const algo = document.getElementById('algorithm').value;
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text);
+                const hashBuffer = await crypto.subtle.digest(algo, data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                output.textContent = hashHex;
+                ToolUtils.showStatus(statusMsg, algo + ' hash generated! (' + hashHex.length + ' hex chars)', 'success');
+            } catch (e) {
+                ToolUtils.showStatus(statusMsg, 'Error generating hash: ' + e.message, 'error');
+            }
+        }
+
+        document.getElementById('hashBtn').addEventListener('click', generateHash);
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const text = output.textContent;
+            if (!text) {
+                ToolUtils.showStatus(statusMsg, 'Generate a hash first.', 'error');
+                return;
+            }
+            ToolUtils.copyToClipboard(text, copyFeedback);
+        });
+    </script>
+</body>
+</html>

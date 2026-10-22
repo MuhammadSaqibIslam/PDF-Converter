@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Encode/Decode - PDF Flare</title>
+    <link rel="stylesheet" href="../css/page-v2.css">
+    
+</head>
+<body>
+
+    <main class="tool-page container">
+        <a href="../v2.html" class="pf-tool-back">&larr; Back to All Tools</a>
+        <h1>URL Encode / Decode</h1>
+        <p>Encode or decode URL components for safe use in URLs.</p>
+
+        <div class="tool-columns">
+            <div class="control-group">
+                <label for="textInput">Decoded Text</label>
+                <textarea id="textInput" class="tool-textarea" rows="10" placeholder="Hello World! Special chars: &amp;=#%"></textarea>
+                <div style="margin-top:10px;display:flex;gap:10px;">
+                    <button id="encodeBtn" class="btn-tool">Encode &rarr;</button>
+                    <button id="copyText" class="btn-secondary">Copy</button>
+                </div>
+            </div>
+            <div class="control-group">
+                <label for="encodedInput">URL Encoded</label>
+                <textarea id="encodedInput" class="tool-textarea" rows="10" placeholder="Hello%20World%21"></textarea>
+                <div style="margin-top:10px;display:flex;gap:10px;">
+                    <button id="decodeBtn" class="btn-tool">&larr; Decode</button>
+                    <button id="copyEncoded" class="btn-secondary">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const textInput = document.getElementById('textInput');
+        const encodedInput = document.getElementById('encodedInput');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        document.getElementById('encodeBtn').addEventListener('click', function() {
+            const text = textInput.value;
+            if (!text) {
+                ToolUtils.showStatus(statusMsg, 'Please enter text to encode.', 'error');
+                return;
+            }
+            try {
+                encodedInput.value = encodeURIComponent(text);
+                ToolUtils.showStatus(statusMsg, 'URL encoded successfully!', 'success');
+            } catch (e) {
+                ToolUtils.showStatus(statusMsg, 'Encoding error: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('decodeBtn').addEventListener('click', function() {
+            const encoded = encodedInput.value.trim();
+            if (!encoded) {
+                ToolUtils.showStatus(statusMsg, 'Please enter encoded text to decode.', 'error');
+                return;
+            }
+            try {
+                textInput.value = decodeURIComponent(encoded);
+                ToolUtils.showStatus(statusMsg, 'URL decoded successfully!', 'success');
+            } catch (e) {
+                ToolUtils.showStatus(statusMsg, 'Decode error: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('copyText').addEventListener('click', function() {
+            ToolUtils.copyToClipboard(textInput.value, copyFeedback);
+        });
+
+        document.getElementById('copyEncoded').addEventListener('click', function() {
+            ToolUtils.copyToClipboard(encodedInput.value, copyFeedback);
+        });
+    </script>
+<script src="../js/tool-common.js"></script>
+<script src="../js/nav-v2.js"></script>
+</body>
+</html>

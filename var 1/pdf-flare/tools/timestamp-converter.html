@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timestamp Converter - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Flare</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Timestamp Converter</h1>
+        <p>Convert between Unix timestamps and human-readable dates.</p>
+
+        <div class="control-group">
+            <h3>Current Unix Timestamp</h3>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <code id="currentTimestamp" style="font-size:1.3rem;font-weight:700;color:#2563eb;"></code>
+                <button id="copyCurrentBtn" class="btn-secondary" style="padding:6px 12px;">Copy</button>
+            </div>
+        </div>
+
+        <div class="tool-columns">
+            <div class="control-group" style="flex:1;">
+                <h3>Unix Timestamp &rarr; Date</h3>
+                <label for="unixInput">Unix Timestamp (seconds)</label>
+                <input type="number" id="unixInput" placeholder="e.g. 1700000000" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:1rem;">
+                <button id="toDateBtn" class="btn-tool" style="margin-top:10px;">Convert to Date</button>
+                <div class="output-area" style="margin-top:10px;">
+                    <div class="output-content" id="dateOutput"></div>
+                </div>
+            </div>
+
+            <div class="control-group" style="flex:1;">
+                <h3>Date &rarr; Unix Timestamp</h3>
+                <label for="dateInput">Date &amp; Time</label>
+                <input type="datetime-local" id="dateInput" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:1rem;">
+                <button id="toUnixBtn" class="btn-tool" style="margin-top:10px;">Convert to Unix</button>
+                <div class="output-area" style="margin-top:10px;">
+                    <div class="output-content" id="unixOutput"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+        const currentTimestamp = document.getElementById('currentTimestamp');
+
+        // Live clock
+        function updateCurrent() {
+            currentTimestamp.textContent = Math.floor(Date.now() / 1000);
+        }
+        updateCurrent();
+        setInterval(updateCurrent, 1000);
+
+        document.getElementById('copyCurrentBtn').addEventListener('click', function() {
+            ToolUtils.copyToClipboard(currentTimestamp.textContent, copyFeedback);
+        });
+
+        // Set default date input to now
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        document.getElementById('dateInput').value = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+        // Unix -> Date
+        document.getElementById('toDateBtn').addEventListener('click', function() {
+            const val = document.getElementById('unixInput').value.trim();
+            if (!val) {
+                ToolUtils.showStatus(statusMsg, 'Enter a Unix timestamp.', 'error');
+                return;
+            }
+            const ts = parseInt(val);
+            const date = new Date(ts * 1000);
+            if (isNaN(date.getTime())) {
+                ToolUtils.showStatus(statusMsg, 'Invalid timestamp.', 'error');
+                return;
+            }
+            const dateOutput = document.getElementById('dateOutput');
+            dateOutput.innerHTML =
+                '<p><strong>Local:</strong> ' + date.toLocaleString() + '</p>' +
+                '<p><strong>UTC:</strong> ' + date.toUTCString() + '</p>' +
+                '<p><strong>ISO 8601:</strong> ' + date.toISOString() + '</p>' +
+                '<p><strong>Relative:</strong> ' + getRelativeTime(date) + '</p>';
+            ToolUtils.showStatus(statusMsg, 'Converted!', 'success');
+        });
+
+        // Date -> Unix
+        document.getElementById('toUnixBtn').addEventListener('click', function() {
+            const val = document.getElementById('dateInput').value;
+            if (!val) {
+                ToolUtils.showStatus(statusMsg, 'Select a date and time.', 'error');
+                return;
+            }
+            const date = new Date(val);
+            const unix = Math.floor(date.getTime() / 1000);
+            const unixOutput = document.getElementById('unixOutput');
+            unixOutput.innerHTML =
+                '<p><strong>Unix (seconds):</strong> ' + unix + '</p>' +
+                '<p><strong>Unix (milliseconds):</strong> ' + (unix * 1000) + '</p>';
+            ToolUtils.showStatus(statusMsg, 'Converted!', 'success');
+        });
+
+        function getRelativeTime(date) {
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            if (diff < 0) {
+                const abs = Math.abs(diff);
+                if (abs < 60) return 'in ' + abs + ' seconds';
+                if (abs < 3600) return 'in ' + Math.floor(abs/60) + ' minutes';
+                if (abs < 86400) return 'in ' + Math.floor(abs/3600) + ' hours';
+                return 'in ' + Math.floor(abs/86400) + ' days';
+            }
+            if (diff < 60) return diff + ' seconds ago';
+            if (diff < 3600) return Math.floor(diff/60) + ' minutes ago';
+            if (diff < 86400) return Math.floor(diff/3600) + ' hours ago';
+            return Math.floor(diff/86400) + ' days ago';
+        }
+    </script>
+</body>
+</html>

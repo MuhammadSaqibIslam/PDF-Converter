@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compress Image - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Flare</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Compress Image</h1>
+        <p>Reduce image file size by adjusting quality and format.</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <p class="upload-text">Drop your image here or click to browse</p>
+            <p class="upload-hint">Supports PNG, JPEG, WebP, GIF, BMP</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div id="editorSection" style="display:none;">
+            <div style="margin-top:24px;">
+                <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;margin-bottom:20px;">
+                    <img id="preview" style="max-width:100%;max-height:400px;border-radius:4px;" alt="Preview">
+                </div>
+
+                <div class="tool-controls">
+                    <div class="control-group" style="flex:1;min-width:200px;">
+                        <label for="qualitySlider">Quality: <span id="qualityVal">80</span>%</label>
+                        <input type="range" id="qualitySlider" min="1" max="100" value="80" style="width:100%;min-width:200px;">
+                    </div>
+                    <div class="control-group">
+                        <label for="formatSelect">Output Format</label>
+                        <select id="formatSelect">
+                            <option value="image/jpeg">JPEG</option>
+                            <option value="image/webp">WebP</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="sizeComparison" style="margin:16px 0;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);display:none;">
+                    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:13px;">
+                        <div><strong>Original:</strong> <span id="origSize"></span></div>
+                        <div><strong>Compressed:</strong> <span id="compSize"></span></div>
+                        <div><strong>Savings:</strong> <span id="savings" style="color:var(--green);font-weight:600;"></span></div>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+                    <button id="compressBtn" class="btn-tool">Compress</button>
+                    <button id="downloadBtn" class="btn-tool btn-download" style="display:none;">Download</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const editorSection = document.getElementById('editorSection');
+        const preview = document.getElementById('preview');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityVal = document.getElementById('qualityVal');
+        const formatSelect = document.getElementById('formatSelect');
+        const compressBtn = document.getElementById('compressBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const sizeComparison = document.getElementById('sizeComparison');
+        const origSize = document.getElementById('origSize');
+        const compSize = document.getElementById('compSize');
+        const savings = document.getElementById('savings');
+        const statusMsg = document.getElementById('statusMsg');
+
+        let originalImage = null;
+        let originalFileSize = 0;
+        let resultBlob = null;
+        let previewURL = null;
+        let originalFileName = '';
+
+        qualitySlider.addEventListener('input', () => {
+            qualityVal.textContent = qualitySlider.value;
+        });
+
+        ToolUtils.setupDragDrop(uploadArea, (files) => handleFile(files[0]));
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                ToolUtils.showStatus(statusMsg, 'Please select a valid image file.', 'error');
+                return;
+            }
+            ToolUtils.hideStatus(statusMsg);
+            originalFileName = file.name.replace(/\.[^.]+$/, '');
+            originalFileSize = file.size;
+
+            if (previewURL) URL.revokeObjectURL(previewURL);
+            previewURL = URL.createObjectURL(file);
+
+            const img = new Image();
+            img.onload = () => {
+                originalImage = img;
+                preview.src = previewURL;
+                editorSection.style.display = 'block';
+                downloadBtn.style.display = 'none';
+                sizeComparison.style.display = 'none';
+                resultBlob = null;
+            };
+            img.onerror = () => ToolUtils.showStatus(statusMsg, 'Failed to load image.', 'error');
+            img.src = previewURL;
+        }
+
+        compressBtn.addEventListener('click', () => {
+            if (!originalImage) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = originalImage.width;
+            canvas.height = originalImage.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(originalImage, 0, 0);
+
+            const quality = parseInt(qualitySlider.value) / 100;
+            const format = formatSelect.value;
+
+            canvas.toBlob((blob) => {
+                resultBlob = blob;
+                if (previewURL) URL.revokeObjectURL(previewURL);
+                previewURL = URL.createObjectURL(blob);
+                preview.src = previewURL;
+
+                origSize.textContent = ToolUtils.formatFileSize(originalFileSize);
+                compSize.textContent = ToolUtils.formatFileSize(blob.size);
+                const pct = ((1 - blob.size / originalFileSize) * 100).toFixed(1);
+                savings.textContent = pct > 0 ? pct + '% smaller' : 'No reduction (try lower quality)';
+                sizeComparison.style.display = 'block';
+                downloadBtn.style.display = 'inline-flex';
+
+                ToolUtils.showStatus(statusMsg, 'Image compressed successfully!', 'success');
+            }, format, quality);
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (!resultBlob) return;
+            const ext = formatSelect.value === 'image/webp' ? '.webp' : '.jpg';
+            ToolUtils.downloadBlob(resultBlob, originalFileName + '-compressed' + ext);
+        });
+    </script>
+</body>
+</html>

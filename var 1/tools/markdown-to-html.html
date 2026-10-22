@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown to HTML - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Flare</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Markdown to HTML</h1>
+        <p>Convert Markdown to HTML with live preview.</p>
+
+        <div class="tool-columns">
+            <div class="control-group" style="flex:1;">
+                <label for="mdInput">Markdown Input</label>
+                <textarea id="mdInput" class="tool-textarea" rows="16" placeholder="# Hello World
+
+This is **bold** and *italic* text.
+
+- Item 1
+- Item 2
+
+[Link](https://example.com)
+
+`inline code`
+
+```
+code block
+```"></textarea>
+            </div>
+            <div class="control-group" style="flex:1;">
+                <label>HTML Preview</label>
+                <div id="preview" class="output-content" style="min-height:300px;padding:15px;border:1px solid #ddd;border-radius:8px;overflow:auto;"></div>
+            </div>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="copyHtmlBtn" class="btn-tool">Copy HTML</button>
+            <button id="downloadBtn" class="btn-secondary">Download HTML</button>
+            <button id="showSourceBtn" class="btn-secondary">Show Source</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area" id="sourceArea" style="display:none;">
+            <label>HTML Source</label>
+            <pre class="output-content" id="htmlSource" style="white-space:pre-wrap;"></pre>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const mdInput = document.getElementById('mdInput');
+        const preview = document.getElementById('preview');
+        const htmlSource = document.getElementById('htmlSource');
+        const sourceArea = document.getElementById('sourceArea');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        function markdownToHtml(md) {
+            let html = md;
+
+            // Code blocks (``` ... ```)
+            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function(m, lang, code) {
+                return '<pre><code>' + escapeHtml(code.trim()) + '</code></pre>';
+            });
+
+            // Inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers
+            html = html.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+            html = html.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+            html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+            html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+            // Horizontal rule
+            html = html.replace(/^---+$/gm, '<hr>');
+
+            // Bold and italic
+            html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+            html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+            html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+            // Images
+            html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+
+            // Links
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+            // Blockquotes
+            html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+
+            // Unordered lists
+            html = html.replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>');
+            html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+            // Ordered lists
+            html = html.replace(/^\d+\.\s+(.+)$/gm, '<oli>$1</oli>');
+            html = html.replace(/((?:<oli>.*<\/oli>\n?)+)/g, function(m) {
+                return '<ol>' + m.replace(/<\/?oli>/g, function(t) { return t.replace('oli', 'li'); }) + '</ol>';
+            });
+
+            // Paragraphs: wrap remaining lines not inside tags
+            html = html.split('\n\n').map(block => {
+                block = block.trim();
+                if (!block) return '';
+                if (/^<[a-z]/.test(block)) return block;
+                return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+            }).join('\n');
+
+            return html;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function update() {
+            const html = markdownToHtml(mdInput.value);
+            preview.innerHTML = html;
+            htmlSource.textContent = html;
+        }
+
+        mdInput.addEventListener('input', update);
+
+        document.getElementById('copyHtmlBtn').addEventListener('click', function() {
+            const html = markdownToHtml(mdInput.value);
+            if (!html.trim()) {
+                ToolUtils.showStatus(statusMsg, 'Enter some Markdown first.', 'error');
+                return;
+            }
+            ToolUtils.copyToClipboard(html, copyFeedback);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            const html = markdownToHtml(mdInput.value);
+            if (!html.trim()) {
+                ToolUtils.showStatus(statusMsg, 'Enter some Markdown first.', 'error');
+                return;
+            }
+            ToolUtils.downloadText(html, 'converted.html', 'text/html');
+        });
+
+        document.getElementById('showSourceBtn').addEventListener('click', function() {
+            sourceArea.style.display = sourceArea.style.display === 'none' ? 'block' : 'none';
+            this.textContent = sourceArea.style.display === 'none' ? 'Show Source' : 'Hide Source';
+        });
+
+        update();
+    </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Converter - PDF Flare</title>
+    <link rel="stylesheet" href="../css/page-v2.css">
+    
+    <style>
+        .color-swatch {
+            width: 100%;
+            height: 120px;
+            border-radius: 12px;
+            border: 2px solid #ddd;
+            margin-bottom: 15px;
+            transition: background 0.2s;
+        }
+        .color-values { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .color-value-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .color-value-card strong { font-size: 0.85rem; color: #666; }
+        .color-value-card code { font-size: 0.95rem; font-weight: 600; }
+        .color-value-card button { padding: 4px 10px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <main class="tool-page container">
+        <a href="../v2.html" class="pf-tool-back">&larr; Back to All Tools</a>
+        <h1>Color Converter</h1>
+        <p>Convert colors between HEX, RGB, and HSL formats.</p>
+
+        <div class="control-group" style="display:flex;gap:15px;align-items:end;flex-wrap:wrap;">
+            <div>
+                <label for="colorPicker">Pick a Color</label>
+                <input type="color" id="colorPicker" value="#2563eb" style="width:60px;height:40px;border:none;cursor:pointer;border-radius:6px;">
+            </div>
+            <div style="flex:1;min-width:200px;">
+                <label for="hexInput">HEX Value</label>
+                <input type="text" id="hexInput" value="#2563eb" placeholder="#000000" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:1rem;font-family:monospace;">
+            </div>
+            <button id="convertBtn" class="btn-tool">Convert</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="color-swatch" id="swatch" style="background:#2563eb;"></div>
+
+        <div class="color-values">
+            <div class="color-value-card">
+                <div><strong>HEX</strong><br><code id="hexVal">#2563eb</code></div>
+                <button class="btn-secondary copy-val" data-target="hexVal">Copy</button>
+            </div>
+            <div class="color-value-card">
+                <div><strong>RGB</strong><br><code id="rgbVal">rgb(37, 99, 235)</code></div>
+                <button class="btn-secondary copy-val" data-target="rgbVal">Copy</button>
+            </div>
+            <div class="color-value-card">
+                <div><strong>HSL</strong><br><code id="hslVal">hsl(217, 82%, 53%)</code></div>
+                <button class="btn-secondary copy-val" data-target="hslVal">Copy</button>
+            </div>
+            <div class="color-value-card">
+                <div><strong>RGB Values</strong><br><code id="rgbRaw">37, 99, 235</code></div>
+                <button class="btn-secondary copy-val" data-target="rgbRaw">Copy</button>
+            </div>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const colorPicker = document.getElementById('colorPicker');
+        const hexInput = document.getElementById('hexInput');
+        const swatch = document.getElementById('swatch');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        function hexToRgb(hex) {
+            hex = hex.replace('#', '');
+            if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            const r = parseInt(hex.substring(0,2), 16);
+            const g = parseInt(hex.substring(2,4), 16);
+            const b = parseInt(hex.substring(4,6), 16);
+            return {r, g, b};
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r,g,b), min = Math.min(r,g,b);
+            let h, s, l = (max+min)/2;
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+                switch(max) {
+                    case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+                    case g: h = ((b-r)/d + 2)/6; break;
+                    case b: h = ((r-g)/d + 4)/6; break;
+                }
+            }
+            return {
+                h: Math.round(h*360),
+                s: Math.round(s*100),
+                l: Math.round(l*100)
+            };
+        }
+
+        function updateColor(hex) {
+            hex = hex.trim();
+            if (!hex.startsWith('#')) hex = '#' + hex;
+            if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
+                ToolUtils.showStatus(statusMsg, 'Invalid HEX color.', 'error');
+                return;
+            }
+            const rgb = hexToRgb(hex);
+            if (isNaN(rgb.r) || isNaN(rgb.g) || isNaN(rgb.b)) {
+                ToolUtils.showStatus(statusMsg, 'Invalid HEX color.', 'error');
+                return;
+            }
+            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+            // Normalize hex to 6 digits
+            const fullHex = '#' + [rgb.r, rgb.g, rgb.b].map(v => v.toString(16).padStart(2,'0')).join('');
+
+            swatch.style.background = fullHex;
+            colorPicker.value = fullHex;
+            hexInput.value = fullHex;
+
+            document.getElementById('hexVal').textContent = fullHex;
+            document.getElementById('rgbVal').textContent = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
+            document.getElementById('hslVal').textContent = 'hsl(' + hsl.h + ', ' + hsl.s + '%, ' + hsl.l + '%)';
+            document.getElementById('rgbRaw').textContent = rgb.r + ', ' + rgb.g + ', ' + rgb.b;
+
+            ToolUtils.hideStatus(statusMsg);
+        }
+
+        colorPicker.addEventListener('input', function() {
+            hexInput.value = this.value;
+            updateColor(this.value);
+        });
+
+        hexInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (val.length === 4 || val.length === 7) {
+                updateColor(val);
+            }
+        });
+
+        document.getElementById('convertBtn').addEventListener('click', function() {
+            updateColor(hexInput.value);
+        });
+
+        document.querySelectorAll('.copy-val').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const target = document.getElementById(this.dataset.target);
+                ToolUtils.copyToClipboard(target.textContent, copyFeedback);
+            });
+        });
+
+        updateColor('#2563eb');
+    </script>
+<script src="../js/tool-common.js"></script>
+<script src="../js/nav-v2.js"></script>
+</body>
+</html>

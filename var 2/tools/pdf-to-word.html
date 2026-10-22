@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Word - PDF Flare</title>
+    <link rel="stylesheet" href="../css/page-v2.css">
+    
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+
+<main><section class="tool-page"><div class="container">
+    <a href="../v2.html" class="pf-tool-back">&larr; Back to All Tools</a>
+    <div class="tool-header"><h1>PDF to Word</h1><p>Convert PDF documents to editable Word (DOCX) format.</p></div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf">
+        <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="upload-text">Drop a PDF file here or click to browse</p>
+    </div>
+
+    <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Processing...</p></div>
+    <div id="status" class="status-msg"></div>
+    <div class="output-area" id="output" style="display:none;"></div>
+</div></section></main>
+<script src="../js/tool-common.js"></script>
+<script>
+(function() {
+    const { showStatus, setupDragDrop } = ToolUtils;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const output = document.getElementById('output');
+
+    setupDragDrop(uploadArea, fileInput, handleFile);
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showStatus('Please select a valid PDF file.', 'error');
+            return;
+        }
+        output.style.display = 'block';
+        output.innerHTML =
+            '<div class="status-msg info" style="display:block;">' +
+            '<h3 style="margin-bottom:0.75rem;">Browser Limitation</h3>' +
+            '<p>Converting PDF to Word (DOCX) requires complex document analysis that cannot be reliably performed in a browser. The conversion needs to reconstruct text flow, tables, images, and formatting from the PDF structure.</p>' +
+            '<h4 style="margin:1rem 0 0.5rem;">Recommended Alternatives:</h4>' +
+            '<ul style="margin:0.5rem 0; padding-left:1.5rem;">' +
+            '<li><strong>LibreOffice</strong> (free, open-source) &mdash; Open the PDF directly, edit, and save as DOCX</li>' +
+            '<li><strong>Microsoft Word</strong> &mdash; Open the PDF and Word will convert it automatically</li>' +
+            '<li><strong>Google Docs</strong> &mdash; Upload the PDF to Google Drive, then open with Google Docs</li>' +
+            '<li><strong>Adobe Acrobat</strong> &mdash; Export PDF to Word with high fidelity</li>' +
+            '</ul>' +
+            '<p style="margin-top:1rem;">These tools run the conversion locally or in a secure cloud environment, preserving document formatting accurately.</p>' +
+            '</div>';
+        showStatus('PDF to Word conversion is not supported in the browser. See recommendations below.', 'info');
+    }
+})();
+</script>
+<script src="../js/tool-common.js"></script>
+<script src="../js/nav-v2.js"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge PDF - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="../index.html" class="logo">
+                <svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg>
+                <span class="logo-text">PDF <span class="logo-accent">Flare</span></span>
+            </a>
+            <nav class="main-nav" id="mainNav">
+                <a href="../index.html#all-tools" class="nav-link">PDF Tools</a>
+                <a href="../index.html#all-tools" class="nav-link">Image Tools</a>
+                <a href="../index.html#all-tools" class="nav-link">JSON Tools</a>
+                <a href="../index.html#all-tools" class="nav-link">Dev Tools</a>
+                <a href="../index.html#all-tools" class="nav-link">Text Tools</a>
+                <a href="../pages/blog.html" class="nav-link">Blog</a>
+            </nav>
+            <div class="header-actions">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false">
+                    <span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+    <main>
+        <section class="tool-page">
+            <div class="container">
+                <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+                <div class="tool-header">
+                    <h1>Merge PDF</h1>
+                    <p>Combine multiple PDF files into a single document. Drag and drop to add files.</p>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept=".pdf" multiple>
+                    <div class="upload-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <p class="upload-text">Drop PDF files here or click to browse</p>
+                    <p class="upload-hint">Select multiple PDF files to merge</p>
+                </div>
+
+                <div class="file-list" id="fileList"></div>
+
+                <div class="tool-actions">
+                    <button class="btn-tool" id="mergeBtn" disabled>Merge PDFs</button>
+                    <button class="btn-tool btn-secondary" id="clearBtn" style="display:none">Clear All</button>
+                </div>
+
+                <div class="processing" id="processing">
+                    <div class="spinner"></div>
+                    <p class="processing-text">Merging PDFs...</p>
+                </div>
+
+                <div id="status" class="status-msg"></div>
+
+                <div class="output-area" id="output">
+                    <h3>Merged PDF Ready</h3>
+                    <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px" id="outputInfo"></p>
+                    <button class="btn-tool btn-download" id="downloadBtn">Download Merged PDF</button>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Flare. All rights reserved.</p></div></div></footer>
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileList = document.getElementById('fileList');
+        const mergeBtn = document.getElementById('mergeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const processing = document.getElementById('processing');
+        const status = document.getElementById('status');
+        const output = document.getElementById('output');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const outputInfo = document.getElementById('outputInfo');
+
+        let pdfFiles = [];
+        let mergedBlob = null;
+
+        ToolUtils.setupDragDrop(uploadArea, addFiles);
+
+        fileInput.addEventListener('change', () => {
+            addFiles(Array.from(fileInput.files));
+            fileInput.value = '';
+        });
+
+        function addFiles(files) {
+            const pdfs = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+            if (pdfs.length === 0) {
+                ToolUtils.showStatus(status, 'Please select valid PDF files.', 'error');
+                return;
+            }
+            ToolUtils.hideStatus(status);
+            pdfs.forEach(f => {
+                pdfFiles.push(f);
+                const item = ToolUtils.createFileItem(f, (file) => {
+                    pdfFiles = pdfFiles.filter(p => p !== file);
+                    updateUI();
+                });
+                fileList.appendChild(item);
+            });
+            updateUI();
+        }
+
+        function updateUI() {
+            mergeBtn.disabled = pdfFiles.length < 2;
+            clearBtn.style.display = pdfFiles.length > 0 ? '' : 'none';
+            output.classList.remove('visible');
+        }
+
+        clearBtn.addEventListener('click', () => {
+            pdfFiles = [];
+            fileList.innerHTML = '';
+            mergedBlob = null;
+            updateUI();
+            ToolUtils.hideStatus(status);
+        });
+
+        mergeBtn.addEventListener('click', async () => {
+            if (pdfFiles.length < 2) return;
+            processing.classList.add('visible');
+            mergeBtn.disabled = true;
+            ToolUtils.hideStatus(status);
+            output.classList.remove('visible');
+
+            try {
+                const mergedPdf = await PDFLib.PDFDocument.create();
+
+                for (const file of pdfFiles) {
+                    const bytes = await file.arrayBuffer();
+                    const pdf = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+                    const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    pages.forEach(page => mergedPdf.addPage(page));
+                }
+
+                const mergedBytes = await mergedPdf.save();
+                mergedBlob = new Blob([mergedBytes], { type: 'application/pdf' });
+
+                outputInfo.textContent = `${mergedPdf.getPageCount()} pages | ${ToolUtils.formatFileSize(mergedBlob.size)}`;
+                output.classList.add('visible');
+                ToolUtils.showStatus(status, `Successfully merged ${pdfFiles.length} PDF files!`, 'success');
+            } catch (err) {
+                ToolUtils.showStatus(status, 'Error merging PDFs: ' + err.message, 'error');
+            } finally {
+                processing.classList.remove('visible');
+                mergeBtn.disabled = false;
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (mergedBlob) ToolUtils.downloadBlob(mergedBlob, 'merged.pdf');
+        });
+    </script>
+</body>
+</html>

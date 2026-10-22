@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to JPG - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+
+<main><section class="tool-page"><div class="container">
+    <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+    <div class="tool-header"><h1>PDF to JPG</h1><p>Convert each page of your PDF into a high-quality JPG image. Download individual pages or all at once.</p></div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf">
+        <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="upload-text">Drop a PDF file here or click to browse</p>
+    </div>
+
+    <div id="fileInfo" class="file-info" style="display:none;">
+        <div id="fileItem"></div>
+    </div>
+
+    <div id="controls" style="display:none; margin-top:1.5rem;">
+        <div class="tool-options">
+            <div class="option-group">
+                <label for="quality">JPG Quality:</label>
+                <select id="quality" class="tool-select">
+                    <option value="0.6">Low (smaller file)</option>
+                    <option value="0.8" selected>Medium</option>
+                    <option value="0.95">High (larger file)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="scale">Resolution Scale:</label>
+                <select id="scale" class="tool-select">
+                    <option value="1">1x (72 DPI)</option>
+                    <option value="2" selected>2x (144 DPI)</option>
+                    <option value="3">3x (216 DPI)</option>
+                </select>
+            </div>
+            <button class="tool-btn" id="processBtn" style="margin-top:1rem;">Convert to JPG</button>
+        </div>
+    </div>
+
+    <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text" id="processingText">Processing...</p></div>
+    <div id="status" class="status-msg"></div>
+    <div class="output-area" id="output" style="display:none;"></div>
+</div></section></main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Flare. All rights reserved.</p></div></div></footer>
+<script src="../js/tool-common.js"></script>
+<script>
+(function() {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const { showStatus, hideStatus, downloadBlob, setupDragDrop, createFileItem, formatFileSize } = ToolUtils;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const controls = document.getElementById('controls');
+    const processing = document.getElementById('processing');
+    const processingText = document.getElementById('processingText');
+    const output = document.getElementById('output');
+    const processBtn = document.getElementById('processBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileItemEl = document.getElementById('fileItem');
+
+    let pdfData = null;
+    let fileName = '';
+
+    setupDragDrop(uploadArea, fileInput, handleFile);
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showStatus('Please select a valid PDF file.', 'error');
+            return;
+        }
+        hideStatus();
+        fileName = file.name;
+        pdfData = await file.arrayBuffer();
+
+        try {
+            const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+            fileItemEl.innerHTML = '';
+            fileItemEl.appendChild(createFileItem(file.name, formatFileSize(file.size)));
+            fileInfo.style.display = 'block';
+            controls.style.display = 'block';
+            output.style.display = 'none';
+            showStatus(pdf.numPages + ' page(s) detected.', 'success');
+        } catch(e) {
+            showStatus('Failed to read PDF: ' + e.message, 'error');
+        }
+    }
+
+    processBtn.addEventListener('click', async () => {
+        if (!pdfData) return;
+        hideStatus();
+        processing.style.display = 'flex';
+
+        const quality = parseFloat(document.getElementById('quality').value);
+        const scale = parseFloat(document.getElementById('scale').value);
+
+        try {
+            const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+            const numPages = pdf.numPages;
+            const blobs = [];
+
+            for (let i = 1; i <= numPages; i++) {
+                processingText.textContent = 'Rendering page ' + i + ' of ' + numPages + '...';
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: scale });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                // White background for JPG
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+                blobs.push({ blob, pageNum: i, canvas });
+            }
+
+            processing.style.display = 'none';
+            output.style.display = 'block';
+            output.innerHTML = '<h3 style="margin-bottom:1rem;">Converted ' + numPages + ' page(s)</h3>';
+
+            const grid = document.createElement('div');
+            grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;';
+
+            blobs.forEach(({ blob, pageNum, canvas }) => {
+                const card = document.createElement('div');
+                card.style.cssText = 'border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg-secondary);';
+
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.style.cssText = 'width:100%; display:block;';
+                img.alt = 'Page ' + pageNum;
+
+                const info = document.createElement('div');
+                info.style.cssText = 'padding:0.75rem; text-align:center;';
+                info.innerHTML = '<p style="margin-bottom:0.5rem;">Page ' + pageNum + ' (' + formatFileSize(blob.size) + ')</p>';
+
+                const btn = document.createElement('button');
+                btn.className = 'tool-btn';
+                btn.style.cssText = 'font-size:0.85rem; padding:0.4rem 0.8rem;';
+                btn.textContent = 'Download';
+                btn.addEventListener('click', () => {
+                    const baseName = fileName.replace('.pdf', '');
+                    downloadBlob(blob, baseName + '_page' + pageNum + '.jpg');
+                });
+
+                info.appendChild(btn);
+                card.appendChild(img);
+                card.appendChild(info);
+                grid.appendChild(card);
+            });
+
+            output.appendChild(grid);
+
+            if (blobs.length > 1) {
+                const dlAllBtn = document.createElement('button');
+                dlAllBtn.className = 'tool-btn';
+                dlAllBtn.style.cssText = 'margin-top:1.5rem; display:block;';
+                dlAllBtn.textContent = 'Download All Pages';
+                dlAllBtn.addEventListener('click', () => {
+                    blobs.forEach(({ blob, pageNum }) => {
+                        const baseName = fileName.replace('.pdf', '');
+                        downloadBlob(blob, baseName + '_page' + pageNum + '.jpg');
+                    });
+                });
+                output.appendChild(dlAllBtn);
+            }
+
+            showStatus('All pages converted successfully!', 'success');
+        } catch(e) {
+            processing.style.display = 'none';
+            showStatus('Error converting PDF: ' + e.message, 'error');
+        }
+    });
+})();
+</script>
+</body>
+</html>

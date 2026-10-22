@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JPG to PDF - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+    <header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+    <main><section class="tool-page"><div class="container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <div class="tool-header"><h1>JPG to PDF</h1><p>Convert images (JPG, PNG, WebP) into a single PDF document.</p></div>
+        <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept="image/*" multiple>
+            <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+            <p class="upload-text">Drop images here or click to browse</p>
+            <p class="upload-hint">Supports JPG, PNG, WebP</p>
+        </div>
+        <div class="file-list" id="fileList"></div>
+        <div class="preview-grid" id="previewGrid"></div>
+        <div class="tool-actions">
+            <button class="btn-tool" id="convertBtn" disabled>Convert to PDF</button>
+            <button class="btn-tool btn-secondary" id="clearBtn" style="display:none">Clear All</button>
+        </div>
+        <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Creating PDF...</p></div>
+        <div id="status" class="status-msg"></div>
+        <div class="output-area" id="output"><h3>PDF Ready</h3><p id="outputInfo" style="color:var(--text-secondary);font-size:13px;margin-bottom:16px"></p><button class="btn-tool btn-download" id="downloadBtn">Download PDF</button></div>
+    </div></section></main>
+    <footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Flare. All rights reserved.</p></div></div></footer>
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput=document.getElementById('fileInput'),uploadArea=document.getElementById('uploadArea'),fileList=document.getElementById('fileList'),previewGrid=document.getElementById('previewGrid'),convertBtn=document.getElementById('convertBtn'),clearBtn=document.getElementById('clearBtn'),processing=document.getElementById('processing'),status=document.getElementById('status'),output=document.getElementById('output'),downloadBtn=document.getElementById('downloadBtn'),outputInfo=document.getElementById('outputInfo');
+        let images=[],resultBlob=null;
+        ToolUtils.setupDragDrop(uploadArea,addFiles);
+        fileInput.addEventListener('change',()=>{addFiles(Array.from(fileInput.files));fileInput.value='';});
+        function addFiles(files){
+            const imgs=files.filter(f=>f.type.startsWith('image/'));
+            if(!imgs.length){ToolUtils.showStatus(status,'Please select image files.','error');return;}
+            ToolUtils.hideStatus(status);
+            imgs.forEach(f=>{
+                images.push(f);
+                const item=ToolUtils.createFileItem(f,file=>{images=images.filter(i=>i!==file);updateUI();});
+                fileList.appendChild(item);
+                const prev=document.createElement('div');prev.className='preview-item';
+                const img=document.createElement('img');const url=URL.createObjectURL(f);img.src=url;img.onload=()=>URL.revokeObjectURL(url);
+                prev.appendChild(img);prev.innerHTML+=`<span class="preview-label">${f.name}</span>`;previewGrid.appendChild(prev);
+            });
+            updateUI();
+        }
+        function updateUI(){convertBtn.disabled=images.length===0;clearBtn.style.display=images.length?'':'none';output.classList.remove('visible');}
+        clearBtn.addEventListener('click',()=>{images=[];fileList.innerHTML='';previewGrid.innerHTML='';updateUI();ToolUtils.hideStatus(status);});
+        convertBtn.addEventListener('click',async()=>{
+            if(!images.length)return;processing.classList.add('visible');output.classList.remove('visible');
+            try{
+                const pdf=await PDFLib.PDFDocument.create();
+                for(const file of images){
+                    const bytes=new Uint8Array(await file.arrayBuffer());
+                    let img;
+                    if(file.type==='image/png')img=await pdf.embedPng(bytes);
+                    else{
+                        const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+                        const bmp=await createImageBitmap(file);canvas.width=bmp.width;canvas.height=bmp.height;ctx.drawImage(bmp,0,0);
+                        const blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',0.92));
+                        img=await pdf.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+                    }
+                    const page=pdf.addPage([img.width,img.height]);page.drawImage(img,{x:0,y:0,width:img.width,height:img.height});
+                }
+                const bytes=await pdf.save();resultBlob=new Blob([bytes],{type:'application/pdf'});
+                outputInfo.textContent=`${images.length} images | ${pdf.getPageCount()} pages | ${ToolUtils.formatFileSize(resultBlob.size)}`;
+                output.classList.add('visible');ToolUtils.showStatus(status,'PDF created successfully!','success');
+            }catch(e){ToolUtils.showStatus(status,'Error: '+e.message,'error');}
+            processing.classList.remove('visible');
+        });
+        downloadBtn.addEventListener('click',()=>{if(resultBlob)ToolUtils.downloadBlob(resultBlob,'images.pdf');});
+    </script>
+</body>
+</html>

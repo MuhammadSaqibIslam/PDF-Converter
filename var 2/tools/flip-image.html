@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip &amp; Rotate Image - PDF Flare</title>
+    <link rel="stylesheet" href="../css/page-v2.css">
+    
+</head>
+<body>
+
+    <main class="tool-page container">
+        <a href="../v2.html" class="pf-tool-back">&larr; Back to All Tools</a>
+        <h1>Flip &amp; Rotate Image</h1>
+        <p>Flip horizontally, vertically, or rotate your image.</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <p class="upload-text">Drop your image here or click to browse</p>
+            <p class="upload-hint">Supports PNG, JPEG, WebP, GIF, BMP</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div id="editorSection" style="display:none;">
+            <div style="margin-top:24px;">
+                <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;margin-bottom:20px;">
+                    <canvas id="previewCanvas" style="max-width:100%;max-height:500px;border-radius:4px;"></canvas>
+                    <p id="dimInfo" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></p>
+                </div>
+
+                <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;">
+                    <button id="flipHBtn" class="btn-tool" style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);">Flip Horizontal</button>
+                    <button id="flipVBtn" class="btn-tool" style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);">Flip Vertical</button>
+                    <button id="rotateCWBtn" class="btn-tool" style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);">Rotate 90&deg; CW</button>
+                    <button id="rotateCCWBtn" class="btn-tool" style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);">Rotate 90&deg; CCW</button>
+                    <button id="resetBtn" class="btn-tool" style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-muted);">Reset</button>
+                </div>
+
+                <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+                    <button id="downloadBtn" class="btn-tool btn-download">Download</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const editorSection = document.getElementById('editorSection');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const dimInfo = document.getElementById('dimInfo');
+        const statusMsg = document.getElementById('statusMsg');
+
+        let originalImage = null;
+        let currentCanvas = null; // off-screen canvas holding current state
+        let previewURL = null;
+        let originalFileName = '';
+
+        ToolUtils.setupDragDrop(uploadArea, (files) => handleFile(files[0]));
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                ToolUtils.showStatus(statusMsg, 'Please select a valid image file.', 'error');
+                return;
+            }
+            ToolUtils.hideStatus(statusMsg);
+            originalFileName = file.name.replace(/\.[^.]+$/, '');
+
+            if (previewURL) URL.revokeObjectURL(previewURL);
+            previewURL = URL.createObjectURL(file);
+
+            const img = new Image();
+            img.onload = () => {
+                originalImage = img;
+                // Initialize current canvas with original image
+                currentCanvas = document.createElement('canvas');
+                currentCanvas.width = img.width;
+                currentCanvas.height = img.height;
+                currentCanvas.getContext('2d').drawImage(img, 0, 0);
+                renderPreview();
+                editorSection.style.display = 'block';
+            };
+            img.onerror = () => ToolUtils.showStatus(statusMsg, 'Failed to load image.', 'error');
+            img.src = previewURL;
+        }
+
+        function renderPreview() {
+            previewCanvas.width = currentCanvas.width;
+            previewCanvas.height = currentCanvas.height;
+            previewCanvas.getContext('2d').drawImage(currentCanvas, 0, 0);
+            dimInfo.textContent = currentCanvas.width + ' x ' + currentCanvas.height + ' px';
+        }
+
+        document.getElementById('flipHBtn').addEventListener('click', () => {
+            if (!currentCanvas) return;
+            const w = currentCanvas.width, h = currentCanvas.height;
+            const temp = document.createElement('canvas');
+            temp.width = w; temp.height = h;
+            const ctx = temp.getContext('2d');
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(currentCanvas, 0, 0);
+            currentCanvas = temp;
+            renderPreview();
+            ToolUtils.showStatus(statusMsg, 'Flipped horizontally.', 'success');
+        });
+
+        document.getElementById('flipVBtn').addEventListener('click', () => {
+            if (!currentCanvas) return;
+            const w = currentCanvas.width, h = currentCanvas.height;
+            const temp = document.createElement('canvas');
+            temp.width = w; temp.height = h;
+            const ctx = temp.getContext('2d');
+            ctx.translate(0, h);
+            ctx.scale(1, -1);
+            ctx.drawImage(currentCanvas, 0, 0);
+            currentCanvas = temp;
+            renderPreview();
+            ToolUtils.showStatus(statusMsg, 'Flipped vertically.', 'success');
+        });
+
+        document.getElementById('rotateCWBtn').addEventListener('click', () => {
+            if (!currentCanvas) return;
+            const w = currentCanvas.width, h = currentCanvas.height;
+            const temp = document.createElement('canvas');
+            temp.width = h; temp.height = w;
+            const ctx = temp.getContext('2d');
+            ctx.translate(h, 0);
+            ctx.rotate(Math.PI / 2);
+            ctx.drawImage(currentCanvas, 0, 0);
+            currentCanvas = temp;
+            renderPreview();
+            ToolUtils.showStatus(statusMsg, 'Rotated 90 degrees clockwise.', 'success');
+        });
+
+        document.getElementById('rotateCCWBtn').addEventListener('click', () => {
+            if (!currentCanvas) return;
+            const w = currentCanvas.width, h = currentCanvas.height;
+            const temp = document.createElement('canvas');
+            temp.width = h; temp.height = w;
+            const ctx = temp.getContext('2d');
+            ctx.translate(0, w);
+            ctx.rotate(-Math.PI / 2);
+            ctx.drawImage(currentCanvas, 0, 0);
+            currentCanvas = temp;
+            renderPreview();
+            ToolUtils.showStatus(statusMsg, 'Rotated 90 degrees counter-clockwise.', 'success');
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (!originalImage) return;
+            currentCanvas = document.createElement('canvas');
+            currentCanvas.width = originalImage.width;
+            currentCanvas.height = originalImage.height;
+            currentCanvas.getContext('2d').drawImage(originalImage, 0, 0);
+            renderPreview();
+            ToolUtils.showStatus(statusMsg, 'Reset to original.', 'info');
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            if (!currentCanvas) return;
+            currentCanvas.toBlob((blob) => {
+                ToolUtils.downloadBlob(blob, originalFileName + '-edited.png');
+            }, 'image/png');
+        });
+    </script>
+<script src="../js/tool-common.js"></script>
+<script src="../js/nav-v2.js"></script>
+</body>
+</html>

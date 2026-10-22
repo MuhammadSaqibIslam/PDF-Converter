@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Validator - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Flare</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>JSON Validator</h1>
+        <p>Check if your JSON is valid and see detailed error information.</p>
+
+        <div class="control-group">
+            <label for="jsonInput">Input JSON</label>
+            <textarea id="jsonInput" class="tool-textarea" rows="12" placeholder='Paste your JSON here to validate...'></textarea>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="validateBtn" class="btn-tool">Validate JSON</button>
+            <button id="clearBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area" id="detailsArea" style="display:none;">
+            <label>Details</label>
+            <div class="output-content" id="output"></div>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const jsonInput = document.getElementById('jsonInput');
+        const output = document.getElementById('output');
+        const statusMsg = document.getElementById('statusMsg');
+        const detailsArea = document.getElementById('detailsArea');
+
+        document.getElementById('validateBtn').addEventListener('click', function() {
+            const raw = jsonInput.value.trim();
+            if (!raw) {
+                ToolUtils.showStatus(statusMsg, 'Please enter some JSON.', 'error');
+                detailsArea.style.display = 'none';
+                return;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                const type = Array.isArray(parsed) ? 'Array' : typeof parsed;
+                let keyCount = 0;
+                if (typeof parsed === 'object' && parsed !== null) {
+                    keyCount = Array.isArray(parsed) ? parsed.length : Object.keys(parsed).length;
+                }
+                ToolUtils.showStatus(statusMsg, 'Valid JSON!', 'success');
+                detailsArea.style.display = 'block';
+                output.innerHTML = '<p><strong>Type:</strong> ' + type + '</p>' +
+                    '<p><strong>' + (Array.isArray(parsed) ? 'Items' : 'Keys') + ':</strong> ' + keyCount + '</p>' +
+                    '<p><strong>Size:</strong> ' + ToolUtils.formatFileSize(new Blob([raw]).size) + '</p>' +
+                    '<p><strong>Depth:</strong> ' + getDepth(parsed) + ' levels</p>';
+            } catch (e) {
+                ToolUtils.showStatus(statusMsg, 'Invalid JSON', 'error');
+                detailsArea.style.display = 'block';
+                const posMatch = e.message.match(/position\s+(\d+)/i);
+                let details = '<p style="color:#e74c3c;"><strong>Error:</strong> ' + e.message + '</p>';
+                if (posMatch) {
+                    const pos = parseInt(posMatch[1]);
+                    const lines = raw.substring(0, pos).split('\n');
+                    const line = lines.length;
+                    const col = lines[lines.length - 1].length + 1;
+                    details += '<p><strong>Line:</strong> ' + line + ', <strong>Column:</strong> ' + col + '</p>';
+                    details += '<p><strong>Near:</strong> <code>' + escapeHtml(raw.substring(Math.max(0, pos - 20), pos + 20)) + '</code></p>';
+                }
+                output.innerHTML = details;
+            }
+        });
+
+        function getDepth(obj) {
+            if (typeof obj !== 'object' || obj === null) return 0;
+            const values = Array.isArray(obj) ? obj : Object.values(obj);
+            if (values.length === 0) return 1;
+            return 1 + Math.max(...values.map(v => getDepth(v)));
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            jsonInput.value = '';
+            output.innerHTML = '';
+            detailsArea.style.display = 'none';
+            ToolUtils.hideStatus(statusMsg);
+        });
+    </script>
+</body>
+</html>

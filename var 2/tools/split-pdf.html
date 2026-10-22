@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split PDF - PDF Flare</title>
+    <link rel="stylesheet" href="../css/page-v2.css">
+    
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+    <main><section class="tool-page"><div class="container">
+        <a href="../v2.html" class="pf-tool-back">&larr; Back to All Tools</a>
+        <div class="tool-header"><h1>Split PDF</h1><p>Separate a PDF into individual pages or extract specific page ranges.</p></div>
+
+        <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept=".pdf">
+            <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+            <p class="upload-text">Drop a PDF file here or click to browse</p>
+            <p class="upload-hint">Select a PDF file to split</p>
+        </div>
+
+        <div id="controls" style="display:none">
+            <div class="file-list" id="fileInfo"></div>
+            <div class="tool-controls">
+                <div class="control-group">
+                    <label>Split Mode</label>
+                    <select id="splitMode">
+                        <option value="all">Extract all pages (one PDF per page)</option>
+                        <option value="range">Extract page range</option>
+                    </select>
+                </div>
+                <div class="control-group" id="rangeGroup" style="display:none">
+                    <label>Page Range (e.g., 1-3, 5, 7-10)</label>
+                    <input type="text" id="pageRange" placeholder="1-3, 5, 7-10">
+                </div>
+            </div>
+            <div class="tool-actions">
+                <button class="btn-tool" id="splitBtn">Split PDF</button>
+                <button class="btn-tool btn-secondary" id="resetBtn">Choose Another File</button>
+            </div>
+        </div>
+
+        <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Splitting PDF...</p></div>
+        <div id="status" class="status-msg"></div>
+        <div class="output-area" id="output"><h3>Split Complete</h3><div id="downloadList" class="file-list"></div></div>
+    </div></section></main>
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const controls = document.getElementById('controls');
+        const splitMode = document.getElementById('splitMode');
+        const rangeGroup = document.getElementById('rangeGroup');
+        const pageRange = document.getElementById('pageRange');
+        const splitBtn = document.getElementById('splitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const processing = document.getElementById('processing');
+        const status = document.getElementById('status');
+        const output = document.getElementById('output');
+        const fileInfo = document.getElementById('fileInfo');
+        const downloadList = document.getElementById('downloadList');
+
+        let pdfBytes = null;
+        let pageCount = 0;
+
+        ToolUtils.setupDragDrop(uploadArea, (files) => loadPDF(files[0]));
+        fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadPDF(fileInput.files[0]); });
+        splitMode.addEventListener('change', () => { rangeGroup.style.display = splitMode.value === 'range' ? '' : 'none'; });
+        resetBtn.addEventListener('click', reset);
+
+        async function loadPDF(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) { ToolUtils.showStatus(status, 'Please select a PDF file.', 'error'); return; }
+            pdfBytes = await file.arrayBuffer();
+            try {
+                const pdf = await PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+                pageCount = pdf.getPageCount();
+                fileInfo.innerHTML = '';
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `<span class="file-name">${file.name}</span><span class="file-size">${pageCount} pages | ${ToolUtils.formatFileSize(file.size)}</span>`;
+                fileInfo.appendChild(item);
+                uploadArea.style.display = 'none';
+                controls.style.display = '';
+                ToolUtils.hideStatus(status);
+                output.classList.remove('visible');
+            } catch (e) { ToolUtils.showStatus(status, 'Error reading PDF: ' + e.message, 'error'); }
+        }
+
+        function reset() {
+            pdfBytes = null; pageCount = 0;
+            uploadArea.style.display = ''; controls.style.display = 'none';
+            output.classList.remove('visible'); ToolUtils.hideStatus(status);
+            fileInput.value = '';
+        }
+
+        function parseRanges(str, max) {
+            const pages = new Set();
+            str.split(',').forEach(part => {
+                part = part.trim();
+                if (part.includes('-')) {
+                    const [a, b] = part.split('-').map(Number);
+                    if (a && b) for (let i = Math.max(1,a); i <= Math.min(max,b); i++) pages.add(i-1);
+                } else {
+                    const n = Number(part);
+                    if (n >= 1 && n <= max) pages.add(n-1);
+                }
+            });
+            return Array.from(pages).sort((a,b) => a-b);
+        }
+
+        splitBtn.addEventListener('click', async () => {
+            if (!pdfBytes) return;
+            processing.classList.add('visible');
+            downloadList.innerHTML = '';
+            output.classList.remove('visible');
+
+            try {
+                const srcPdf = await PDFLib.PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+                let results = [];
+
+                if (splitMode.value === 'all') {
+                    for (let i = 0; i < pageCount; i++) {
+                        const newPdf = await PDFLib.PDFDocument.create();
+                        const [page] = await newPdf.copyPages(srcPdf, [i]);
+                        newPdf.addPage(page);
+                        const bytes = await newPdf.save();
+                        results.push({ name: `page_${i+1}.pdf`, blob: new Blob([bytes], { type: 'application/pdf' }) });
+                    }
+                } else {
+                    const indices = parseRanges(pageRange.value, pageCount);
+                    if (indices.length === 0) { ToolUtils.showStatus(status, 'Invalid page range.', 'error'); processing.classList.remove('visible'); return; }
+                    const newPdf = await PDFLib.PDFDocument.create();
+                    const pages = await newPdf.copyPages(srcPdf, indices);
+                    pages.forEach(p => newPdf.addPage(p));
+                    const bytes = await newPdf.save();
+                    results.push({ name: `pages_${pageRange.value.replace(/\s/g,'')}.pdf`, blob: new Blob([bytes], { type: 'application/pdf' }) });
+                }
+
+                results.forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `<span class="file-name">${r.name}</span><span class="file-size">${ToolUtils.formatFileSize(r.blob.size)}</span>`;
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-tool btn-download';
+                    btn.style.cssText = 'padding:6px 14px;font-size:12px;';
+                    btn.textContent = 'Download';
+                    btn.addEventListener('click', () => ToolUtils.downloadBlob(r.blob, r.name));
+                    item.appendChild(btn);
+                    downloadList.appendChild(item);
+                });
+
+                output.classList.add('visible');
+                ToolUtils.showStatus(status, `Split into ${results.length} file(s) successfully!`, 'success');
+            } catch (e) { ToolUtils.showStatus(status, 'Error splitting PDF: ' + e.message, 'error'); }
+            processing.classList.remove('visible');
+        });
+    </script>
+<script src="../js/tool-common.js"></script>
+<script src="../js/nav-v2.js"></script>
+</body>
+</html>

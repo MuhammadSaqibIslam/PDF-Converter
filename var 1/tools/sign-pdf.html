@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign PDF - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+
+<main><section class="tool-page"><div class="container">
+    <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+    <div class="tool-header"><h1>Sign PDF</h1><p>Draw your signature and place it on any page of your PDF document.</p></div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf">
+        <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="upload-text">Drop a PDF file here or click to browse</p>
+    </div>
+
+    <div id="fileInfo" class="file-info" style="display:none;">
+        <div id="fileItem"></div>
+    </div>
+
+    <div id="controls" style="display:none; margin-top:1.5rem;">
+        <div class="tool-options">
+            <h3 style="margin-bottom:1rem;">Draw Your Signature</h3>
+            <div style="border:2px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:1rem; background:#fff;">
+                <canvas id="sigCanvas" width="500" height="150" style="display:block; width:100%; cursor:crosshair; touch-action:none;"></canvas>
+            </div>
+            <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem;">
+                <button class="tool-btn" id="clearSig" style="background:var(--text-secondary);">Clear</button>
+            </div>
+
+            <h3 style="margin:1rem 0;">Placement</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                <div class="option-group">
+                    <label for="sigX">X position (pts):</label>
+                    <input type="number" id="sigX" class="tool-input" value="100" min="0">
+                </div>
+                <div class="option-group">
+                    <label for="sigY">Y position (pts from bottom):</label>
+                    <input type="number" id="sigY" class="tool-input" value="100" min="0">
+                </div>
+                <div class="option-group">
+                    <label for="sigPage">Page number:</label>
+                    <input type="number" id="sigPage" class="tool-input" value="1" min="1">
+                </div>
+                <div class="option-group">
+                    <label for="sigScale">Scale (%):</label>
+                    <input type="number" id="sigScale" class="tool-input" value="50" min="10" max="200">
+                </div>
+            </div>
+            <p id="pageCountInfo" style="margin-top:0.5rem; color: var(--text-secondary);"></p>
+            <button class="tool-btn" id="processBtn" style="margin-top:1rem;">Sign PDF</button>
+        </div>
+    </div>
+
+    <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Processing...</p></div>
+    <div id="status" class="status-msg"></div>
+    <div class="output-area" id="output" style="display:none;"></div>
+</div></section></main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Flare. All rights reserved.</p></div></div></footer>
+<script src="../js/tool-common.js"></script>
+<script>
+(function() {
+    const { showStatus, hideStatus, downloadBlob, setupDragDrop, createFileItem, formatFileSize } = ToolUtils;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const controls = document.getElementById('controls');
+    const processing = document.getElementById('processing');
+    const output = document.getElementById('output');
+    const pageCountInfo = document.getElementById('pageCountInfo');
+    const processBtn = document.getElementById('processBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileItemEl = document.getElementById('fileItem');
+
+    let pdfBytes = null;
+    let totalPages = 0;
+    let fileName = '';
+
+    // Signature canvas
+    const canvas = document.getElementById('sigCanvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let hasSignature = false;
+
+    canvas.addEventListener('pointerdown', (e) => {
+        drawing = true;
+        hasSignature = true;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        ctx.beginPath();
+        ctx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+    });
+    canvas.addEventListener('pointermove', (e) => {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+        ctx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+        ctx.stroke();
+    });
+    canvas.addEventListener('pointerup', () => { drawing = false; });
+    canvas.addEventListener('pointerleave', () => { drawing = false; });
+
+    document.getElementById('clearSig').addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasSignature = false;
+    });
+
+    setupDragDrop(uploadArea, fileInput, handleFile);
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showStatus('Please select a valid PDF file.', 'error');
+            return;
+        }
+        hideStatus();
+        fileName = file.name;
+        pdfBytes = await file.arrayBuffer();
+        try {
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            totalPages = pdfDoc.getPageCount();
+            document.getElementById('sigPage').max = totalPages;
+            pageCountInfo.textContent = 'This PDF has ' + totalPages + ' page(s).';
+            fileItemEl.innerHTML = '';
+            fileItemEl.appendChild(createFileItem(file.name, formatFileSize(file.size)));
+            fileInfo.style.display = 'block';
+            controls.style.display = 'block';
+            output.style.display = 'none';
+        } catch(e) {
+            showStatus('Failed to read PDF: ' + e.message, 'error');
+        }
+    }
+
+    processBtn.addEventListener('click', async () => {
+        if (!hasSignature) {
+            showStatus('Please draw your signature first.', 'error');
+            return;
+        }
+
+        const sigPage = parseInt(document.getElementById('sigPage').value) || 1;
+        if (sigPage < 1 || sigPage > totalPages) {
+            showStatus('Page number must be between 1 and ' + totalPages + '.', 'error');
+            return;
+        }
+
+        hideStatus();
+        processing.style.display = 'flex';
+
+        try {
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            const sigDataUrl = canvas.toDataURL('image/png');
+            const sigBase64 = sigDataUrl.split(',')[1];
+            const sigBytes = Uint8Array.from(atob(sigBase64), c => c.charCodeAt(0));
+            const sigImage = await pdfDoc.embedPng(sigBytes);
+
+            const sigX = parseFloat(document.getElementById('sigX').value) || 0;
+            const sigY = parseFloat(document.getElementById('sigY').value) || 0;
+            const sigScale = (parseInt(document.getElementById('sigScale').value) || 50) / 100;
+
+            const page = pdfDoc.getPage(sigPage - 1);
+            const dims = sigImage.scale(sigScale);
+            page.drawImage(sigImage, {
+                x: sigX,
+                y: sigY,
+                width: dims.width,
+                height: dims.height,
+            });
+
+            const resultBytes = await pdfDoc.save();
+            const blob = new Blob([resultBytes], { type: 'application/pdf' });
+            const newName = fileName.replace('.pdf', '') + '_signed.pdf';
+
+            processing.style.display = 'none';
+            output.style.display = 'block';
+            output.innerHTML = '<p>Signature added to page ' + sigPage + '.</p>' +
+                '<button class="tool-btn" id="downloadBtn">Download PDF</button>';
+            document.getElementById('downloadBtn').addEventListener('click', () => downloadBlob(blob, newName));
+            showStatus('PDF signed successfully!', 'success');
+        } catch(e) {
+            processing.style.display = 'none';
+            showStatus('Error processing PDF: ' + e.message, 'error');
+        }
+    });
+})();
+</script>
+</body>
+</html>

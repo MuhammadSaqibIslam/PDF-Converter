@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Image - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Flare</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Crop Image</h1>
+        <p>Upload an image and crop it to a specific region.</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <p class="upload-text">Drop your image here or click to browse</p>
+            <p class="upload-hint">Supports PNG, JPEG, WebP, GIF, BMP</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div id="editorSection" style="display:none;">
+            <div style="margin-top:24px;">
+                <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Original Image <span id="imgDims" style="font-weight:400;color:var(--text-muted);"></span></h3>
+                <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center;position:relative;overflow:auto;max-height:500px;">
+                    <canvas id="previewCanvas" style="max-width:100%;border-radius:4px;cursor:crosshair;"></canvas>
+                </div>
+
+                <div class="tool-controls" style="margin-top:16px;">
+                    <div class="control-group">
+                        <label for="cropX">X</label>
+                        <input type="number" id="cropX" min="0" value="0" style="min-width:80px;">
+                    </div>
+                    <div class="control-group">
+                        <label for="cropY">Y</label>
+                        <input type="number" id="cropY" min="0" value="0" style="min-width:80px;">
+                    </div>
+                    <div class="control-group">
+                        <label for="cropW">Width</label>
+                        <input type="number" id="cropW" min="1" value="100" style="min-width:80px;">
+                    </div>
+                    <div class="control-group">
+                        <label for="cropH">Height</label>
+                        <input type="number" id="cropH" min="1" value="100" style="min-width:80px;">
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:20px;">
+                    <button id="cropBtn" class="btn-tool">Crop</button>
+                    <button id="downloadBtn" class="btn-tool btn-download" style="display:none;">Download</button>
+                </div>
+
+                <div id="resultSection" style="display:none;margin-top:24px;">
+                    <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Cropped Result</h3>
+                    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center;">
+                        <canvas id="resultCanvas" style="max-width:100%;border-radius:4px;"></canvas>
+                        <p id="resultInfo" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Flare. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const editorSection = document.getElementById('editorSection');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const imgDims = document.getElementById('imgDims');
+        const cropX = document.getElementById('cropX');
+        const cropY = document.getElementById('cropY');
+        const cropW = document.getElementById('cropW');
+        const cropH = document.getElementById('cropH');
+        const cropBtn = document.getElementById('cropBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resultSection = document.getElementById('resultSection');
+        const resultInfo = document.getElementById('resultInfo');
+        const statusMsg = document.getElementById('statusMsg');
+
+        let originalImage = null;
+        let resultBlob = null;
+        let previewURL = null;
+        let originalFileName = '';
+
+        ToolUtils.setupDragDrop(uploadArea, (files) => handleFile(files[0]));
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                ToolUtils.showStatus(statusMsg, 'Please select a valid image file.', 'error');
+                return;
+            }
+            ToolUtils.hideStatus(statusMsg);
+            originalFileName = file.name.replace(/\.[^.]+$/, '');
+
+            if (previewURL) URL.revokeObjectURL(previewURL);
+            previewURL = URL.createObjectURL(file);
+
+            const img = new Image();
+            img.onload = () => {
+                originalImage = img;
+                imgDims.textContent = '(' + img.width + ' x ' + img.height + ')';
+
+                previewCanvas.width = img.width;
+                previewCanvas.height = img.height;
+                const ctx = previewCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                cropX.value = 0;
+                cropY.value = 0;
+                cropX.max = img.width - 1;
+                cropY.max = img.height - 1;
+                cropW.value = img.width;
+                cropH.value = img.height;
+                cropW.max = img.width;
+                cropH.max = img.height;
+
+                editorSection.style.display = 'block';
+                resultSection.style.display = 'none';
+                downloadBtn.style.display = 'none';
+                resultBlob = null;
+
+                drawOverlay();
+            };
+            img.onerror = () => ToolUtils.showStatus(statusMsg, 'Failed to load image.', 'error');
+            img.src = previewURL;
+        }
+
+        function drawOverlay() {
+            if (!originalImage) return;
+            const ctx = previewCanvas.getContext('2d');
+            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            ctx.drawImage(originalImage, 0, 0);
+
+            const x = parseInt(cropX.value) || 0;
+            const y = parseInt(cropY.value) || 0;
+            const w = parseInt(cropW.value) || 0;
+            const h = parseInt(cropH.value) || 0;
+
+            // Dim area outside crop
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, previewCanvas.width, y);
+            ctx.fillRect(0, y + h, previewCanvas.width, previewCanvas.height - y - h);
+            ctx.fillRect(0, y, x, h);
+            ctx.fillRect(x + w, y, previewCanvas.width - x - w, h);
+
+            // Crop border
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 3]);
+            ctx.strokeRect(x, y, w, h);
+            ctx.setLineDash([]);
+        }
+
+        [cropX, cropY, cropW, cropH].forEach(input => {
+            input.addEventListener('input', drawOverlay);
+        });
+
+        cropBtn.addEventListener('click', () => {
+            if (!originalImage) return;
+
+            const x = parseInt(cropX.value) || 0;
+            const y = parseInt(cropY.value) || 0;
+            const w = parseInt(cropW.value) || 0;
+            const h = parseInt(cropH.value) || 0;
+
+            if (w < 1 || h < 1) {
+                ToolUtils.showStatus(statusMsg, 'Width and height must be at least 1 pixel.', 'error');
+                return;
+            }
+            if (x + w > originalImage.width || y + h > originalImage.height) {
+                ToolUtils.showStatus(statusMsg, 'Crop region exceeds image bounds.', 'error');
+                return;
+            }
+
+            resultCanvas.width = w;
+            resultCanvas.height = h;
+            const ctx = resultCanvas.getContext('2d');
+            ctx.drawImage(originalImage, x, y, w, h, 0, 0, w, h);
+
+            resultCanvas.toBlob((blob) => {
+                resultBlob = blob;
+                resultInfo.textContent = w + ' x ' + h + ' px (' + ToolUtils.formatFileSize(blob.size) + ')';
+                resultSection.style.display = 'block';
+                downloadBtn.style.display = 'inline-flex';
+                ToolUtils.showStatus(statusMsg, 'Image cropped to ' + w + 'x' + h + ' successfully!', 'success');
+            }, 'image/png');
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (resultBlob) {
+                ToolUtils.downloadBlob(resultBlob, originalFileName + '-cropped.png');
+            }
+        });
+    </script>
+</body>
+</html>

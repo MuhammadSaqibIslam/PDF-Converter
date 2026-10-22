@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compress PDF - PDF Flare</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+    <header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+    <main><section class="tool-page"><div class="container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <div class="tool-header"><h1>Compress PDF</h1><p>Reduce PDF file size by removing unused objects and optimizing the document structure.</p></div>
+        <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept=".pdf">
+            <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+            <p class="upload-text">Drop a PDF file here or click to browse</p>
+        </div>
+        <div id="controls" style="display:none">
+            <div class="file-list" id="fileInfo"></div>
+            <div class="tool-actions">
+                <button class="btn-tool" id="compressBtn">Compress PDF</button>
+                <button class="btn-tool btn-secondary" id="resetBtn">Choose Another</button>
+            </div>
+        </div>
+        <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Compressing...</p></div>
+        <div id="status" class="status-msg"></div>
+        <div class="output-area" id="output">
+            <h3>Compressed PDF Ready</h3>
+            <div style="display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap">
+                <div><span style="font-size:12px;color:var(--text-muted)">Original</span><p id="origSize" style="font-size:18px;font-weight:600"></p></div>
+                <div><span style="font-size:12px;color:var(--text-muted)">Compressed</span><p id="compSize" style="font-size:18px;font-weight:600;color:var(--green)"></p></div>
+                <div><span style="font-size:12px;color:var(--text-muted)">Saved</span><p id="savedPct" style="font-size:18px;font-weight:600;color:var(--accent)"></p></div>
+            </div>
+            <button class="btn-tool btn-download" id="downloadBtn">Download</button>
+        </div>
+    </div></section></main>
+    <footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Flare. All rights reserved.</p></div></div></footer>
+    <script src="../js/tool-common.js"></script>
+    <script>
+        let pdfBytes=null,origSize=0,resultBlob=null;
+        const fileInput=document.getElementById('fileInput'),uploadArea=document.getElementById('uploadArea'),controls=document.getElementById('controls'),compressBtn=document.getElementById('compressBtn'),resetBtn=document.getElementById('resetBtn'),processing=document.getElementById('processing'),status=document.getElementById('status'),output=document.getElementById('output'),downloadBtn=document.getElementById('downloadBtn'),fileInfo=document.getElementById('fileInfo');
+        ToolUtils.setupDragDrop(uploadArea,f=>loadPDF(f[0]));
+        fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadPDF(fileInput.files[0]);});
+        resetBtn.addEventListener('click',()=>{pdfBytes=null;uploadArea.style.display='';controls.style.display='none';output.classList.remove('visible');ToolUtils.hideStatus(status);fileInput.value='';});
+        async function loadPDF(file){
+            if(!file.name.toLowerCase().endsWith('.pdf')){ToolUtils.showStatus(status,'Please select a PDF file.','error');return;}
+            pdfBytes=await file.arrayBuffer();origSize=file.size;
+            try{const pdf=await PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true});fileInfo.innerHTML=`<div class="file-item"><span class="file-name">${file.name}</span><span class="file-size">${pdf.getPageCount()} pages | ${ToolUtils.formatFileSize(origSize)}</span></div>`;uploadArea.style.display='none';controls.style.display='';ToolUtils.hideStatus(status);output.classList.remove('visible');}catch(e){ToolUtils.showStatus(status,'Error: '+e.message,'error');}
+        }
+        compressBtn.addEventListener('click',async()=>{
+            if(!pdfBytes)return;processing.classList.add('visible');output.classList.remove('visible');
+            try{
+                const pdf=await PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true});
+                // Re-create document to strip unused objects
+                const newPdf=await PDFLib.PDFDocument.create();
+                const pages=await newPdf.copyPages(pdf,pdf.getPageIndices());
+                pages.forEach(p=>newPdf.addPage(p));
+                // Copy metadata
+                newPdf.setTitle(pdf.getTitle()||'');
+                newPdf.setAuthor(pdf.getAuthor()||'');
+                const bytes=await newPdf.save({useObjectStreams:true});
+                resultBlob=new Blob([bytes],{type:'application/pdf'});
+                const saved=origSize-resultBlob.size;const pct=((saved/origSize)*100).toFixed(1);
+                document.getElementById('origSize').textContent=ToolUtils.formatFileSize(origSize);
+                document.getElementById('compSize').textContent=ToolUtils.formatFileSize(resultBlob.size);
+                document.getElementById('savedPct').textContent=saved>0?`${pct}% smaller`:'No reduction';
+                output.classList.add('visible');
+                if(saved>0)ToolUtils.showStatus(status,`Compressed! Saved ${ToolUtils.formatFileSize(saved)} (${pct}%).`,'success');
+                else ToolUtils.showStatus(status,'This PDF is already well-optimized. The compressed version is similar in size.','info');
+            }catch(e){ToolUtils.showStatus(status,'Error: '+e.message,'error');}
+            processing.classList.remove('visible');
+        });
+        downloadBtn.addEventListener('click',()=>{if(resultBlob)ToolUtils.downloadBlob(resultBlob,'compressed.pdf');});
+    </script>
+</body>
+</html>
