@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotate PDF - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+    <header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+    <main><section class="tool-page"><div class="container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <div class="tool-header"><h1>Rotate PDF</h1><p>Rotate all pages or specific pages of your PDF document.</p></div>
+        <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" accept=".pdf">
+            <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+            <p class="upload-text">Drop a PDF file here or click to browse</p>
+        </div>
+        <div id="controls" style="display:none">
+            <div class="file-list" id="fileInfo"></div>
+            <div class="tool-controls">
+                <div class="control-group"><label>Rotation</label>
+                    <select id="rotation"><option value="90">90&deg; Clockwise</option><option value="180">180&deg;</option><option value="270">90&deg; Counter-clockwise</option></select>
+                </div>
+                <div class="control-group"><label>Apply to</label>
+                    <select id="applyTo"><option value="all">All Pages</option><option value="range">Specific Pages</option></select>
+                </div>
+                <div class="control-group" id="rangeGroup" style="display:none"><label>Pages (e.g., 1,3,5-7)</label><input type="text" id="pageRange" placeholder="1,3,5-7"></div>
+            </div>
+            <div class="tool-actions">
+                <button class="btn-tool" id="rotateBtn">Rotate PDF</button>
+                <button class="btn-tool btn-secondary" id="resetBtn">Choose Another File</button>
+            </div>
+        </div>
+        <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Rotating...</p></div>
+        <div id="status" class="status-msg"></div>
+        <div class="output-area" id="output"><h3>Rotated PDF Ready</h3><p id="outputInfo" style="color:var(--text-secondary);font-size:13px;margin-bottom:16px"></p><button class="btn-tool btn-download" id="downloadBtn">Download</button></div>
+    </div></section></main>
+    <footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Forge. All rights reserved.</p></div></div></footer>
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput=document.getElementById('fileInput'),uploadArea=document.getElementById('uploadArea'),controls=document.getElementById('controls'),rotateBtn=document.getElementById('rotateBtn'),resetBtn=document.getElementById('resetBtn'),processing=document.getElementById('processing'),status=document.getElementById('status'),output=document.getElementById('output'),downloadBtn=document.getElementById('downloadBtn'),applyTo=document.getElementById('applyTo'),rangeGroup=document.getElementById('rangeGroup'),pageRange=document.getElementById('pageRange'),rotation=document.getElementById('rotation'),fileInfo=document.getElementById('fileInfo'),outputInfo=document.getElementById('outputInfo');
+        let pdfBytes=null,resultBlob=null;
+        ToolUtils.setupDragDrop(uploadArea,f=>loadPDF(f[0]));
+        fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadPDF(fileInput.files[0]);});
+        applyTo.addEventListener('change',()=>{rangeGroup.style.display=applyTo.value==='range'?'':'none';});
+        resetBtn.addEventListener('click',()=>{pdfBytes=null;uploadArea.style.display='';controls.style.display='none';output.classList.remove('visible');ToolUtils.hideStatus(status);fileInput.value='';});
+        async function loadPDF(file){
+            if(!file.name.toLowerCase().endsWith('.pdf')){ToolUtils.showStatus(status,'Please select a PDF file.','error');return;}
+            pdfBytes=await file.arrayBuffer();
+            try{const pdf=await PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true});fileInfo.innerHTML=`<div class="file-item"><span class="file-name">${file.name}</span><span class="file-size">${pdf.getPageCount()} pages</span></div>`;uploadArea.style.display='none';controls.style.display='';ToolUtils.hideStatus(status);output.classList.remove('visible');}catch(e){ToolUtils.showStatus(status,'Error: '+e.message,'error');}
+        }
+        function parsePages(str,max){const s=new Set();str.split(',').forEach(p=>{p=p.trim();if(p.includes('-')){const[a,b]=p.split('-').map(Number);if(a&&b)for(let i=Math.max(1,a);i<=Math.min(max,b);i++)s.add(i-1);}else{const n=Number(p);if(n>=1&&n<=max)s.add(n-1);}});return s;}
+        rotateBtn.addEventListener('click',async()=>{
+            if(!pdfBytes)return;processing.classList.add('visible');output.classList.remove('visible');
+            try{
+                const pdf=await PDFLib.PDFDocument.load(pdfBytes,{ignoreEncryption:true});const deg=Number(rotation.value);const pages=pdf.getPages();
+                let indices;if(applyTo.value==='all'){indices=new Set(pages.map((_,i)=>i));}else{indices=parsePages(pageRange.value,pages.length);if(indices.size===0){ToolUtils.showStatus(status,'Invalid page range.','error');processing.classList.remove('visible');return;}}
+                pages.forEach((page,i)=>{if(indices.has(i)){const cur=page.getRotation().angle;page.setRotation(PDFLib.degrees(cur+deg));}});
+                const bytes=await pdf.save();resultBlob=new Blob([bytes],{type:'application/pdf'});
+                outputInfo.textContent=`${pages.length} pages | ${ToolUtils.formatFileSize(resultBlob.size)}`;output.classList.add('visible');ToolUtils.showStatus(status,'PDF rotated successfully!','success');
+            }catch(e){ToolUtils.showStatus(status,'Error: '+e.message,'error');}
+            processing.classList.remove('visible');
+        });
+        downloadBtn.addEventListener('click',()=>{if(resultBlob)ToolUtils.downloadBlob(resultBlob,'rotated.pdf');});
+    </script>
+</body>
+</html>

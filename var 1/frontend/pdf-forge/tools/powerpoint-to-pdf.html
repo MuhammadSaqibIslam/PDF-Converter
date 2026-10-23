@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerPoint to PDF - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+
+<main><section class="tool-page"><div class="container">
+    <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+    <div class="tool-header"><h1>PowerPoint to PDF</h1><p>Convert PowerPoint presentations (PPTX) to PDF format.</p></div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".ppt,.pptx">
+        <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="upload-text">Drop a PowerPoint file here or click to browse</p>
+    </div>
+
+    <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Processing...</p></div>
+    <div id="status" class="status-msg"></div>
+    <div class="output-area" id="output" style="display:none;"></div>
+</div></section></main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Forge. All rights reserved.</p></div></div></footer>
+<script src="../js/tool-common.js"></script>
+<script>
+(function() {
+    const { showStatus, setupDragDrop } = ToolUtils;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const output = document.getElementById('output');
+
+    setupDragDrop(uploadArea, fileInput, handleFile);
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    function handleFile(file) {
+        output.style.display = 'block';
+        output.innerHTML =
+            '<div class="status-msg info" style="display:block;">' +
+            '<h3 style="margin-bottom:0.75rem;">Browser Limitation</h3>' +
+            '<p>Converting PowerPoint to PDF requires a presentation rendering engine that is not available in the browser. The conversion needs to process slide layouts, animations, embedded media, and fonts.</p>' +
+            '<h4 style="margin:1rem 0 0.5rem;">Recommended Alternatives:</h4>' +
+            '<ul style="margin:0.5rem 0; padding-left:1.5rem;">' +
+            '<li><strong>LibreOffice Impress</strong> (free, open-source) &mdash; Open the presentation and export as PDF</li>' +
+            '<li><strong>Microsoft PowerPoint</strong> &mdash; File &rarr; Save As &rarr; PDF or File &rarr; Export &rarr; Create PDF</li>' +
+            '<li><strong>Google Slides</strong> &mdash; Upload to Google Drive, open with Slides, then File &rarr; Download &rarr; PDF</li>' +
+            '<li><strong>Browser Print</strong> &mdash; Open in any presentation app, then Ctrl/Cmd + P &rarr; Save as PDF</li>' +
+            '</ul>' +
+            '<p style="margin-top:1rem;">These tools handle slide rendering and layout needed for accurate conversion.</p>' +
+            '</div>';
+        showStatus('PowerPoint to PDF conversion is not supported in the browser. See recommendations below.', 'info');
+    }
+})();
+</script>
+</body>
+</html>

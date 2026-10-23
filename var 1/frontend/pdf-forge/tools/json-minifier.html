@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Minifier - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Forge</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>JSON Minifier</h1>
+        <p>Remove all whitespace from your JSON to reduce file size.</p>
+
+        <div class="control-group">
+            <label for="jsonInput">Input JSON</label>
+            <textarea id="jsonInput" class="tool-textarea" rows="12" placeholder='Paste your formatted JSON here...'></textarea>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="minifyBtn" class="btn-tool">Minify JSON</button>
+            <button id="copyBtn" class="btn-secondary">Copy</button>
+            <button id="clearBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area">
+            <label>Minified Output</label>
+            <pre class="output-content" id="output" style="word-break:break-all;white-space:pre-wrap;"></pre>
+        </div>
+
+        <div id="sizeInfo" class="control-group" style="display:none;">
+            <p id="sizeText"></p>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Forge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const jsonInput = document.getElementById('jsonInput');
+        const output = document.getElementById('output');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+        const sizeInfo = document.getElementById('sizeInfo');
+        const sizeText = document.getElementById('sizeText');
+
+        document.getElementById('minifyBtn').addEventListener('click', function() {
+            const raw = jsonInput.value.trim();
+            if (!raw) {
+                ToolUtils.showStatus(statusMsg, 'Please enter some JSON.', 'error');
+                output.textContent = '';
+                sizeInfo.style.display = 'none';
+                return;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                const minified = JSON.stringify(parsed);
+                output.textContent = minified;
+                const originalSize = new Blob([raw]).size;
+                const minifiedSize = new Blob([minified]).size;
+                const saved = originalSize - minifiedSize;
+                const percent = originalSize > 0 ? ((saved / originalSize) * 100).toFixed(1) : 0;
+                sizeText.textContent = 'Original: ' + ToolUtils.formatFileSize(originalSize) + ' | Minified: ' + ToolUtils.formatFileSize(minifiedSize) + ' | Saved: ' + ToolUtils.formatFileSize(saved) + ' (' + percent + '%)';
+                sizeInfo.style.display = 'block';
+                ToolUtils.showStatus(statusMsg, 'JSON minified successfully!', 'success');
+            } catch (e) {
+                output.textContent = '';
+                sizeInfo.style.display = 'none';
+                ToolUtils.showStatus(statusMsg, 'Invalid JSON: ' + e.message, 'error');
+            }
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            const text = output.textContent;
+            if (!text) {
+                ToolUtils.showStatus(statusMsg, 'Nothing to copy. Minify JSON first.', 'error');
+                return;
+            }
+            ToolUtils.copyToClipboard(text, copyFeedback);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            jsonInput.value = '';
+            output.textContent = '';
+            sizeInfo.style.display = 'none';
+            ToolUtils.hideStatus(statusMsg);
+        });
+    </script>
+</body>
+</html>

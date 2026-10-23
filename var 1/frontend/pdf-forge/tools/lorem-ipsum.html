@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorem Ipsum Generator - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Forge</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Lorem Ipsum Generator</h1>
+        <p>Generate placeholder text for your designs and mockups.</p>
+
+        <div class="control-group" style="display:flex;gap:15px;align-items:end;flex-wrap:wrap;">
+            <div>
+                <label for="paraCount">Paragraphs</label>
+                <input type="number" id="paraCount" min="1" max="20" value="3" style="width:80px;padding:8px;border:1px solid #ccc;border-radius:6px;">
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <input type="checkbox" id="startClassic" checked> Start with "Lorem ipsum..."
+            </label>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="generateBtn" class="btn-tool">Generate</button>
+            <button id="copyBtn" class="btn-secondary">Copy</button>
+            <button id="clearBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area">
+            <div class="output-content" id="output" style="white-space:pre-wrap;"></div>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Forge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const output = document.getElementById('output');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        const WORDS = [
+            'lorem','ipsum','dolor','sit','amet','consectetur','adipiscing','elit','sed','do',
+            'eiusmod','tempor','incididunt','ut','labore','et','dolore','magna','aliqua','enim',
+            'ad','minim','veniam','quis','nostrud','exercitation','ullamco','laboris','nisi',
+            'aliquip','ex','ea','commodo','consequat','duis','aute','irure','in','reprehenderit',
+            'voluptate','velit','esse','cillum','fugiat','nulla','pariatur','excepteur','sint',
+            'occaecat','cupidatat','non','proident','sunt','culpa','qui','officia','deserunt',
+            'mollit','anim','id','est','laborum','pellentesque','habitant','morbi','tristique',
+            'senectus','netus','malesuada','fames','ac','turpis','egestas','maecenas','accumsan',
+            'lacus','vel','facilisis','volutpat','vitae','sapien','semper','justo','dignissim',
+            'convallis','aenean','pharetra','potenti','vivamus','fermentum','nibh','augue',
+            'praesent','blandit','nam','ante','risus','feugiat','cras','ornare','arcu','dui',
+            'viverra','nec','vulputate','eu','scelerisque','felis','imperdiet','proin','sagittis',
+            'nisl','rhoncus','mattis','massa','faucibus','tincidunt','tortor','aliquam','nunc',
+            'pulvinar','elementum','integer','enim','neque','gravida','rutrum','quisque'
+        ];
+
+        const CLASSIC_START = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function generateSentence() {
+            const len = randomInt(8, 18);
+            const words = [];
+            for (let i = 0; i < len; i++) {
+                words.push(WORDS[randomInt(0, WORDS.length - 1)]);
+            }
+            words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+            return words.join(' ') + '.';
+        }
+
+        function generateParagraph() {
+            const sentenceCount = randomInt(4, 8);
+            const sentences = [];
+            for (let i = 0; i < sentenceCount; i++) {
+                sentences.push(generateSentence());
+            }
+            return sentences.join(' ');
+        }
+
+        function generate() {
+            const count = Math.min(20, Math.max(1, parseInt(document.getElementById('paraCount').value) || 3));
+            const startClassic = document.getElementById('startClassic').checked;
+            const paragraphs = [];
+            for (let i = 0; i < count; i++) {
+                if (i === 0 && startClassic) {
+                    const extra = generateParagraph();
+                    paragraphs.push(CLASSIC_START + ' ' + extra);
+                } else {
+                    paragraphs.push(generateParagraph());
+                }
+            }
+            output.textContent = paragraphs.join('\n\n');
+            ToolUtils.showStatus(statusMsg, count + ' paragraph(s) generated!', 'success');
+        }
+
+        document.getElementById('generateBtn').addEventListener('click', generate);
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            if (!output.textContent) {
+                ToolUtils.showStatus(statusMsg, 'Generate text first.', 'error');
+                return;
+            }
+            ToolUtils.copyToClipboard(output.textContent, copyFeedback);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            output.textContent = '';
+            ToolUtils.hideStatus(statusMsg);
+        });
+
+        generate();
+    </script>
+</body>
+</html>

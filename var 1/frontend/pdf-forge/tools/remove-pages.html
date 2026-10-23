@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remove Pages - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+
+<main><section class="tool-page"><div class="container">
+    <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+    <div class="tool-header"><h1>Remove Pages</h1><p>Upload a PDF and remove specific pages by number. The remaining pages are saved to a new file.</p></div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf">
+        <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="upload-text">Drop a PDF file here or click to browse</p>
+    </div>
+
+    <div id="fileInfo" class="file-info" style="display:none;">
+        <div id="fileItem"></div>
+    </div>
+
+    <div id="controls" style="display:none; margin-top:1.5rem;">
+        <div class="tool-options">
+            <div class="option-group">
+                <label for="pageNumbers">Pages to remove (comma-separated, e.g. 2,4,6):</label>
+                <input type="text" id="pageNumbers" class="tool-input" placeholder="e.g. 2, 4, 6">
+            </div>
+            <p id="pageCountInfo" style="margin-top:0.5rem; color: var(--text-secondary);"></p>
+            <button class="tool-btn" id="processBtn" style="margin-top:1rem;">Remove Pages</button>
+        </div>
+    </div>
+
+    <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Processing...</p></div>
+    <div id="status" class="status-msg"></div>
+    <div class="output-area" id="output" style="display:none;"></div>
+</div></section></main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Forge. All rights reserved.</p></div></div></footer>
+<script src="../js/tool-common.js"></script>
+<script>
+(function() {
+    const { showStatus, hideStatus, downloadBlob, setupDragDrop, createFileItem, formatFileSize } = ToolUtils;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const controls = document.getElementById('controls');
+    const processing = document.getElementById('processing');
+    const output = document.getElementById('output');
+    const pageCountInfo = document.getElementById('pageCountInfo');
+    const processBtn = document.getElementById('processBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileItem = document.getElementById('fileItem');
+
+    let pdfBytes = null;
+    let totalPages = 0;
+    let fileName = '';
+
+    setupDragDrop(uploadArea, fileInput, handleFile);
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showStatus('Please select a valid PDF file.', 'error');
+            return;
+        }
+        hideStatus();
+        fileName = file.name;
+        pdfBytes = await file.arrayBuffer();
+        try {
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            totalPages = pdfDoc.getPageCount();
+            pageCountInfo.textContent = 'This PDF has ' + totalPages + ' page' + (totalPages !== 1 ? 's' : '') + '.';
+            fileItem.innerHTML = '';
+            fileItem.appendChild(createFileItem(file.name, formatFileSize(file.size)));
+            fileInfo.style.display = 'block';
+            controls.style.display = 'block';
+            output.style.display = 'none';
+        } catch(e) {
+            showStatus('Failed to read PDF: ' + e.message, 'error');
+        }
+    }
+
+    processBtn.addEventListener('click', async () => {
+        const input = document.getElementById('pageNumbers').value.trim();
+        if (!input) { showStatus('Please enter page numbers to remove.', 'error'); return; }
+
+        const pagesToRemove = input.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+        if (pagesToRemove.length === 0) { showStatus('Invalid page numbers.', 'error'); return; }
+
+        for (const p of pagesToRemove) {
+            if (p < 1 || p > totalPages) {
+                showStatus('Page ' + p + ' is out of range (1-' + totalPages + ').', 'error');
+                return;
+            }
+        }
+
+        if (pagesToRemove.length >= totalPages) {
+            showStatus('You cannot remove all pages from the PDF.', 'error');
+            return;
+        }
+
+        hideStatus();
+        processing.style.display = 'flex';
+
+        try {
+            const srcDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            const newDoc = await PDFLib.PDFDocument.create();
+            const removeSet = new Set(pagesToRemove.map(p => p - 1));
+            const keepIndices = [];
+            for (let i = 0; i < totalPages; i++) {
+                if (!removeSet.has(i)) keepIndices.push(i);
+            }
+            const copiedPages = await newDoc.copyPages(srcDoc, keepIndices);
+            copiedPages.forEach(page => newDoc.addPage(page));
+            const resultBytes = await newDoc.save();
+            const blob = new Blob([resultBytes], { type: 'application/pdf' });
+            const newName = fileName.replace('.pdf', '') + '_pages-removed.pdf';
+
+            processing.style.display = 'none';
+            output.style.display = 'block';
+            output.innerHTML = '<p>Removed ' + pagesToRemove.length + ' page(s). New PDF has ' + keepIndices.length + ' page(s).</p>' +
+                '<button class="tool-btn" id="downloadBtn">Download PDF</button>';
+            document.getElementById('downloadBtn').addEventListener('click', () => downloadBlob(blob, newName));
+            showStatus('Pages removed successfully!', 'success');
+        } catch(e) {
+            processing.style.display = 'none';
+            showStatus('Error processing PDF: ' + e.message, 'error');
+        }
+    });
+})();
+</script>
+</body>
+</html>

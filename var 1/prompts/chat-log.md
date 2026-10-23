@@ -1,8 +1,8 @@
-# PDF Flare - Complete Chat Log
+# PDF Forge - Complete Chat Log
 
 ## Project Overview
-- **Project:** PDF Flare - Free Online PDF & File Tools Website
-- **Location:** `/Users/saqibislam/Desktop/pdf/pdf-flare/`
+- **Project:** PDF Forge - Free Online PDF & File Tools Website
+- **Location:** `/Users/saqibislam/Desktop/pdf/pdf-forge/`
 - **Date Started:** October 21, 2026
 - **Type:** Browser-based web application (HTML/CSS/JS)
 
@@ -17,8 +17,8 @@ Created folder `pdf` on Desktop.
 **User:** "folder ma 2 items hain unhy load kro"
 
 Found 2 items:
-1. `screencapture-pdfflare-2026-10-21-11_01_09.png` - Reference screenshot
-2. `pdf-flare-website-prompt.md` - Detailed build prompt
+1. `screencapture-pdfforge-2026-10-21-11_01_09.png` - Reference screenshot
+2. `pdf-forge-website-prompt.md` - Detailed build prompt
 
 ---
 
@@ -26,7 +26,7 @@ Found 2 items:
 
 **User:** "markdown file parho"
 
-Read the full prompt - a detailed specification for building PDF Flare website:
+Read the full prompt - a detailed specification for building PDF Forge website:
 - Dark-themed online utility platform for PDF, image, JSON, and dev tools
 - Near-black background (#0B0908), orange accents (#F97316)
 - Sections: Header, Hero, Trust Strip, Featured Tools, All Tools Directory, About, Benefits, Footer
@@ -47,7 +47,7 @@ Built the complete website with 3 files:
 
 ### Project Structure:
 ```
-pdf-flare/
+pdf-forge/
 ├── index.html
 ├── css/
 │   └── styles.css
@@ -391,7 +391,7 @@ Ordered lists now properly wrap in `<ol>` tags (was missing `<ol>` wrapper).
 
 ### Complete File Structure:
 ```
-pdf-flare/
+pdf-forge/
 ├── index.html
 ├── chat-log.md
 ├── css/

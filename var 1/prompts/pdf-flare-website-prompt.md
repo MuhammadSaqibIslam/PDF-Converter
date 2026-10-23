@@ -1,4 +1,4 @@
-# PDF Flare Website --- AI Website-Building Prompt
+# PDF Forge Website --- AI Website-Building Prompt
 
 ## 1. Role
 
@@ -22,7 +22,7 @@ practical.
 
 ## 2. Task
 
-Build a polished, responsive website named **PDF Flare**, closely
+Build a polished, responsive website named **PDF Forge**, closely
 matching the supplied screenshot.
 
 The reference is a dark-themed online utility platform for PDF files,
@@ -81,7 +81,7 @@ visually matches the reference.
 
 Create a compact top navigation bar with:
 
--   Left: small orange app/logo mark and the **PDF Flare** wordmark.
+-   Left: small orange app/logo mark and the **PDF Forge** wordmark.
 -   Middle/right: compact navigation links for PDF Tools, Image Tools,
     JSON Tools, Dev Tools, Text Tools, and Blog.
 -   Right: a small search control and compact utility/theme-style icon
@@ -232,7 +232,7 @@ needed; the reference primarily uses category tabs.
 
 Below the tool directory, create a narrow, centered text section with:
 
--   Small orange eyebrow: "ABOUT PDF FLARE"
+-   Small orange eyebrow: "ABOUT PDF FORGE"
 -   Heading: **The All-In-One Toolkit for PDFs, Images & Documents**
 -   Several short, readable paragraphs describing the platform, its
     privacy-first approach, file-processing utilities, browser
@@ -246,7 +246,7 @@ making the paragraphs too bright or too wide.
 
 Add another centered section with:
 
--   Small orange eyebrow: "WHY PDF FLARE"
+-   Small orange eyebrow: "WHY PDF FORGE"
 -   Heading: **Built for People Who Value Their Time**
 -   Short subtitle about simplicity, speed, and privacy.
 
@@ -267,7 +267,7 @@ tablets, and one column on small phones.
 
 Create a compact footer matching the screenshot, with:
 
--   PDF Flare logo and a short brand statement on the left.
+-   PDF Forge logo and a short brand statement on the left.
 -   A **PDF Tools** link column.
 -   An **Image Tools** link column.
 -   A **Company** link column containing About, Blog, Privacy Policy,
@@ -330,7 +330,7 @@ Use:
 Recommended project structure:
 
 ``` text
-pdf-flare/
+pdf-forge/
 ├── index.html
 ├── css/
 │   └── styles.css

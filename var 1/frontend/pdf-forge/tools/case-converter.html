@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Converter - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Forge</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Case Converter</h1>
+        <p>Convert text between different cases: UPPER, lower, Title, camelCase, snake_case, kebab-case.</p>
+
+        <div class="control-group">
+            <label for="textInput">Input Text</label>
+            <textarea id="textInput" class="tool-textarea" rows="6" placeholder="Enter your text here..."></textarea>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-tool" data-case="upper">UPPERCASE</button>
+            <button class="btn-tool" data-case="lower">lowercase</button>
+            <button class="btn-tool" data-case="title">Title Case</button>
+            <button class="btn-secondary" data-case="camel">camelCase</button>
+            <button class="btn-secondary" data-case="snake">snake_case</button>
+            <button class="btn-secondary" data-case="kebab">kebab-case</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area">
+            <label>Converted Text</label>
+            <pre class="output-content" id="output" style="white-space:pre-wrap;"></pre>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;">
+            <button id="copyBtn" class="btn-secondary">Copy</button>
+            <button id="clearBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Forge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const textInput = document.getElementById('textInput');
+        const output = document.getElementById('output');
+        const statusMsg = document.getElementById('statusMsg');
+        const copyFeedback = document.getElementById('copyFeedback');
+
+        function getWords(text) {
+            return text.replace(/([a-z])([A-Z])/g, '$1 $2')
+                       .replace(/[_\-]+/g, ' ')
+                       .trim()
+                       .split(/\s+/)
+                       .filter(w => w.length > 0);
+        }
+
+        const converters = {
+            upper: text => text.toUpperCase(),
+            lower: text => text.toLowerCase(),
+            title: text => text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase()),
+            camel: text => {
+                const words = getWords(text);
+                return words.map((w, i) => {
+                    w = w.toLowerCase();
+                    return i === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1);
+                }).join('');
+            },
+            snake: text => getWords(text).map(w => w.toLowerCase()).join('_'),
+            kebab: text => getWords(text).map(w => w.toLowerCase()).join('-')
+        };
+
+        document.querySelectorAll('[data-case]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const text = textInput.value;
+                if (!text.trim()) {
+                    ToolUtils.showStatus(statusMsg, 'Please enter some text.', 'error');
+                    return;
+                }
+                const caseType = this.dataset.case;
+                output.textContent = converters[caseType](text);
+                ToolUtils.showStatus(statusMsg, 'Converted to ' + caseType + '!', 'success');
+            });
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            if (!output.textContent) {
+                ToolUtils.showStatus(statusMsg, 'Nothing to copy.', 'error');
+                return;
+            }
+            ToolUtils.copyToClipboard(output.textContent, copyFeedback);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            textInput.value = '';
+            output.textContent = '';
+            ToolUtils.hideStatus(statusMsg);
+        });
+    </script>
+</body>
+</html>

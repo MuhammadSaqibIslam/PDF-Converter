@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Diff - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <style>
+        .diff-output { font-family: monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; }
+        .diff-added { background: #d4edda; color: #155724; }
+        .diff-removed { background: #f8d7da; color: #721c24; }
+        .diff-line { padding: 2px 8px; border-left: 3px solid transparent; }
+        .diff-line.diff-added { border-left-color: #28a745; }
+        .diff-line.diff-removed { border-left-color: #dc3545; }
+        .diff-line.diff-unchanged { border-left-color: #dee2e6; color: #666; }
+        .diff-line-num { display: inline-block; width: 40px; color: #999; text-align: right; margin-right: 10px; user-select: none; }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Forge</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Text Diff</h1>
+        <p>Compare two texts side by side and see the differences highlighted.</p>
+
+        <div class="tool-columns">
+            <div class="control-group" style="flex:1;">
+                <label for="textA">Original Text</label>
+                <textarea id="textA" class="tool-textarea" rows="12" placeholder="Paste original text here..."></textarea>
+            </div>
+            <div class="control-group" style="flex:1;">
+                <label for="textB">Modified Text</label>
+                <textarea id="textB" class="tool-textarea" rows="12" placeholder="Paste modified text here..."></textarea>
+            </div>
+        </div>
+
+        <div class="control-group" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="compareBtn" class="btn-tool">Compare</button>
+            <button id="clearBtn" class="btn-secondary">Clear All</button>
+            <button id="swapBtn" class="btn-secondary">Swap</button>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+
+        <div class="output-area" id="diffArea" style="display:none;">
+            <label>Differences</label>
+            <div id="diffStats" style="margin-bottom:10px;font-size:0.9rem;"></div>
+            <div class="diff-output output-content" id="diffOutput"></div>
+        </div>
+
+        <div class="copy-feedback" id="copyFeedback">Copied to clipboard!</div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Forge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const textA = document.getElementById('textA');
+        const textB = document.getElementById('textB');
+        const diffOutput = document.getElementById('diffOutput');
+        const diffArea = document.getElementById('diffArea');
+        const diffStats = document.getElementById('diffStats');
+        const statusMsg = document.getElementById('statusMsg');
+
+        function computeDiff(linesA, linesB) {
+            // Simple LCS-based line diff
+            const m = linesA.length, n = linesB.length;
+            const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (linesA[i-1] === linesB[j-1]) {
+                        dp[i][j] = dp[i-1][j-1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+                    }
+                }
+            }
+            // Backtrack
+            const result = [];
+            let i = m, j = n;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && linesA[i-1] === linesB[j-1]) {
+                    result.unshift({type: 'unchanged', text: linesA[i-1]});
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+                    result.unshift({type: 'added', text: linesB[j-1]});
+                    j--;
+                } else {
+                    result.unshift({type: 'removed', text: linesA[i-1]});
+                    i--;
+                }
+            }
+            return result;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        document.getElementById('compareBtn').addEventListener('click', function() {
+            const a = textA.value;
+            const b = textB.value;
+            if (!a && !b) {
+                ToolUtils.showStatus(statusMsg, 'Please enter text in both fields.', 'error');
+                return;
+            }
+            const linesA = a.split('\n');
+            const linesB = b.split('\n');
+            const diff = computeDiff(linesA, linesB);
+
+            let added = 0, removed = 0, unchanged = 0;
+            let html = '';
+            let lineNum = 0;
+            diff.forEach(d => {
+                lineNum++;
+                const prefix = d.type === 'added' ? '+' : d.type === 'removed' ? '-' : ' ';
+                const cls = d.type === 'added' ? 'diff-added' : d.type === 'removed' ? 'diff-removed' : 'diff-unchanged';
+                html += '<div class="diff-line ' + cls + '"><span class="diff-line-num">' + lineNum + '</span>' + prefix + ' ' + escapeHtml(d.text) + '</div>';
+                if (d.type === 'added') added++;
+                else if (d.type === 'removed') removed++;
+                else unchanged++;
+            });
+
+            diffOutput.innerHTML = html;
+            diffStats.innerHTML = '<span style="color:#28a745;font-weight:600;">+' + added + ' added</span> &nbsp; <span style="color:#dc3545;font-weight:600;">-' + removed + ' removed</span> &nbsp; <span style="color:#666;">' + unchanged + ' unchanged</span>';
+            diffArea.style.display = 'block';
+
+            if (added === 0 && removed === 0) {
+                ToolUtils.showStatus(statusMsg, 'The texts are identical.', 'success');
+            } else {
+                ToolUtils.showStatus(statusMsg, 'Differences found!', 'success');
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            textA.value = '';
+            textB.value = '';
+            diffOutput.innerHTML = '';
+            diffArea.style.display = 'none';
+            ToolUtils.hideStatus(statusMsg);
+        });
+
+        document.getElementById('swapBtn').addEventListener('click', function() {
+            const tmp = textA.value;
+            textA.value = textB.value;
+            textB.value = tmp;
+        });
+    </script>
+</body>
+</html>

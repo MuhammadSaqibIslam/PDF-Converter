@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop PDF - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+<header class="site-header"><div class="container header-inner"><a href="../index.html" class="logo"><svg class="logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#F97316"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg><span class="logo-text">PDF <span class="logo-accent">Flare</span></span></a><nav class="main-nav" id="mainNav"><a href="../index.html#all-tools" class="nav-link">PDF Tools</a><a href="../index.html#all-tools" class="nav-link">Image Tools</a><a href="../index.html#all-tools" class="nav-link">JSON Tools</a><a href="../index.html#all-tools" class="nav-link">Dev Tools</a><a href="../index.html#all-tools" class="nav-link">Text Tools</a><a href="../pages/blog.html" class="nav-link">Blog</a></nav><div class="header-actions"><button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu" aria-expanded="false"><span class="hamburger-line"></span><span class="hamburger-line"></span><span class="hamburger-line"></span></button></div></div></header>
+
+<main><section class="tool-page"><div class="container">
+    <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+    <div class="tool-header"><h1>Crop PDF</h1><p>Crop margins from all pages of your PDF by specifying how many points to trim from each side.</p></div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf">
+        <div class="upload-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <p class="upload-text">Drop a PDF file here or click to browse</p>
+    </div>
+
+    <div id="fileInfo" class="file-info" style="display:none;">
+        <div id="fileItem"></div>
+    </div>
+
+    <div id="controls" style="display:none; margin-top:1.5rem;">
+        <div class="tool-options">
+            <p style="margin-bottom:0.75rem; color: var(--text-secondary);">Enter margins to crop in points (72 points = 1 inch):</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; max-width:400px;">
+                <div class="option-group">
+                    <label for="cropTop">Top:</label>
+                    <input type="number" id="cropTop" class="tool-input" value="0" min="0">
+                </div>
+                <div class="option-group">
+                    <label for="cropBottom">Bottom:</label>
+                    <input type="number" id="cropBottom" class="tool-input" value="0" min="0">
+                </div>
+                <div class="option-group">
+                    <label for="cropLeft">Left:</label>
+                    <input type="number" id="cropLeft" class="tool-input" value="0" min="0">
+                </div>
+                <div class="option-group">
+                    <label for="cropRight">Right:</label>
+                    <input type="number" id="cropRight" class="tool-input" value="0" min="0">
+                </div>
+            </div>
+            <p id="pageCountInfo" style="margin-top:0.5rem; color: var(--text-secondary);"></p>
+            <button class="tool-btn" id="processBtn" style="margin-top:1rem;">Crop PDF</button>
+        </div>
+    </div>
+
+    <div class="processing" id="processing"><div class="spinner"></div><p class="processing-text">Processing...</p></div>
+    <div id="status" class="status-msg"></div>
+    <div class="output-area" id="output" style="display:none;"></div>
+</div></section></main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><p>&copy; 2026 PDF Forge. All rights reserved.</p></div></div></footer>
+<script src="../js/tool-common.js"></script>
+<script>
+(function() {
+    const { showStatus, hideStatus, downloadBlob, setupDragDrop, createFileItem, formatFileSize } = ToolUtils;
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const controls = document.getElementById('controls');
+    const processing = document.getElementById('processing');
+    const output = document.getElementById('output');
+    const pageCountInfo = document.getElementById('pageCountInfo');
+    const processBtn = document.getElementById('processBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileItem = document.getElementById('fileItem');
+
+    let pdfBytes = null;
+    let fileName = '';
+
+    setupDragDrop(uploadArea, fileInput, handleFile);
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+    async function handleFile(file) {
+        if (file.type !== 'application/pdf') {
+            showStatus('Please select a valid PDF file.', 'error');
+            return;
+        }
+        hideStatus();
+        fileName = file.name;
+        pdfBytes = await file.arrayBuffer();
+        try {
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            const totalPages = pdfDoc.getPageCount();
+            const firstPage = pdfDoc.getPage(0);
+            const { width, height } = firstPage.getSize();
+            pageCountInfo.textContent = totalPages + ' page(s). First page size: ' + Math.round(width) + ' x ' + Math.round(height) + ' pts.';
+            fileItem.innerHTML = '';
+            fileItem.appendChild(createFileItem(file.name, formatFileSize(file.size)));
+            fileInfo.style.display = 'block';
+            controls.style.display = 'block';
+            output.style.display = 'none';
+        } catch(e) {
+            showStatus('Failed to read PDF: ' + e.message, 'error');
+        }
+    }
+
+    processBtn.addEventListener('click', async () => {
+        const top = parseFloat(document.getElementById('cropTop').value) || 0;
+        const bottom = parseFloat(document.getElementById('cropBottom').value) || 0;
+        const left = parseFloat(document.getElementById('cropLeft').value) || 0;
+        const right = parseFloat(document.getElementById('cropRight').value) || 0;
+
+        if (top === 0 && bottom === 0 && left === 0 && right === 0) {
+            showStatus('Please enter at least one crop margin greater than 0.', 'error');
+            return;
+        }
+
+        hideStatus();
+        processing.style.display = 'flex';
+
+        try {
+            const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+            const pages = pdfDoc.getPages();
+
+            for (const page of pages) {
+                const mediaBox = page.getMediaBox();
+                const newX = mediaBox.x + left;
+                const newY = mediaBox.y + bottom;
+                const newWidth = mediaBox.width - left - right;
+                const newHeight = mediaBox.height - top - bottom;
+
+                if (newWidth <= 0 || newHeight <= 0) {
+                    processing.style.display = 'none';
+                    showStatus('Crop margins are too large for the page size.', 'error');
+                    return;
+                }
+
+                page.setCropBox(newX, newY, newWidth, newHeight);
+                page.setMediaBox(newX, newY, newWidth, newHeight);
+            }
+
+            const resultBytes = await pdfDoc.save();
+            const blob = new Blob([resultBytes], { type: 'application/pdf' });
+            const newName = fileName.replace('.pdf', '') + '_cropped.pdf';
+
+            processing.style.display = 'none';
+            output.style.display = 'block';
+            output.innerHTML = '<p>Cropped ' + pages.length + ' page(s) successfully.</p>' +
+                '<button class="tool-btn" id="downloadBtn">Download PDF</button>';
+            document.getElementById('downloadBtn').addEventListener('click', () => downloadBlob(blob, newName));
+            showStatus('PDF cropped successfully!', 'success');
+        } catch(e) {
+            processing.style.display = 'none';
+            showStatus('Error processing PDF: ' + e.message, 'error');
+        }
+    });
+})();
+</script>
+</body>
+</html>

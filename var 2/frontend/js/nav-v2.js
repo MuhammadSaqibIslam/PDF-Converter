@@ -1,4 +1,4 @@
-// PDF Flare V2 — Shared Navigation (auto-injected)
+// PDF Forge V2 — Shared Navigation (auto-injected)
 (function() {
     // Detect if we're in tools/ or pages/ subfolder
     const path = window.location.pathname;
@@ -15,7 +15,7 @@
 
     const navHTML = `
     <nav class="pf-nav">
-        <a href="${pre}v2.html" class="pf-logo" aria-label="PDF Flare Home">
+        <a href="${pre}v2.html" class="pf-logo" aria-label="PDF Forge Home">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#C0392B"/><path d="M8 7h8a4 4 0 010 8h-3v6H9V7z" fill="#fff"/></svg>
         </a>
         <button class="pf-mobile-btn" id="pfMobileBtn" aria-label="Toggle menu"><span></span><span></span><span></span></button>
@@ -131,7 +131,7 @@
     // Add footer if not exists
     if (!document.querySelector('.pf-footer') && !document.querySelector('footer')) {
         document.body.insertAdjacentHTML('beforeend', `
-            <footer class="pf-footer"><div class="pf-container pf-footer-inner"><p>&copy; 2026 PDF Flare. All rights reserved.</p></div></footer>
+            <footer class="pf-footer"><div class="pf-container pf-footer-inner"><p>&copy; 2026 PDF Forge. All rights reserved.</p></div></footer>
         `);
     }
 

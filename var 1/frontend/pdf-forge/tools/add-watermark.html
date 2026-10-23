@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Watermark - PDF Forge</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="../index.html" class="logo">PDF Forge</a>
+            <nav class="main-nav">
+                <a href="../index.html#all-tools">Tools</a>
+                <a href="../pages/blog.html">Blog</a>
+            </nav>
+            <button class="mobile-menu-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="tool-page container">
+        <a href="../index.html#all-tools" class="tool-back">&larr; Back to All Tools</a>
+        <h1>Add Watermark</h1>
+        <p>Add a text watermark to your image with customizable style and position.</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <p class="upload-text">Drop your image here or click to browse</p>
+            <p class="upload-hint">Supports PNG, JPEG, WebP, GIF, BMP</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div id="editorSection" style="display:none;">
+            <div style="margin-top:24px;">
+                <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;margin-bottom:20px;">
+                    <canvas id="previewCanvas" style="max-width:100%;max-height:500px;border-radius:4px;"></canvas>
+                </div>
+
+                <div class="tool-controls">
+                    <div class="control-group" style="flex:1;min-width:180px;">
+                        <label for="watermarkText">Watermark Text</label>
+                        <input type="text" id="watermarkText" value="PDF Forge" placeholder="Enter watermark text">
+                    </div>
+                    <div class="control-group">
+                        <label for="fontSize">Font Size: <span id="fontSizeVal">36</span>px</label>
+                        <input type="range" id="fontSize" min="12" max="72" value="36" style="min-width:120px;">
+                    </div>
+                    <div class="control-group">
+                        <label for="opacity">Opacity: <span id="opacityVal">0.3</span></label>
+                        <input type="range" id="opacity" min="10" max="100" value="30" style="min-width:120px;">
+                    </div>
+                    <div class="control-group">
+                        <label for="position">Position</label>
+                        <select id="position">
+                            <option value="center">Center</option>
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                            <option value="tiled">Tiled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:20px;">
+                    <button id="applyBtn" class="btn-tool">Apply Watermark</button>
+                    <button id="downloadBtn" class="btn-tool btn-download" style="display:none;">Download</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status-msg"></div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PDF Forge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../js/tool-common.js"></script>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const editorSection = document.getElementById('editorSection');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const watermarkText = document.getElementById('watermarkText');
+        const fontSizeSlider = document.getElementById('fontSize');
+        const fontSizeVal = document.getElementById('fontSizeVal');
+        const opacitySlider = document.getElementById('opacity');
+        const opacityVal = document.getElementById('opacityVal');
+        const positionSelect = document.getElementById('position');
+        const applyBtn = document.getElementById('applyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const statusMsg = document.getElementById('statusMsg');
+
+        let originalImage = null;
+        let resultBlob = null;
+        let previewURL = null;
+        let originalFileName = '';
+
+        fontSizeSlider.addEventListener('input', () => {
+            fontSizeVal.textContent = fontSizeSlider.value;
+        });
+        opacitySlider.addEventListener('input', () => {
+            opacityVal.textContent = (parseInt(opacitySlider.value) / 100).toFixed(2);
+        });
+
+        ToolUtils.setupDragDrop(uploadArea, (files) => handleFile(files[0]));
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                ToolUtils.showStatus(statusMsg, 'Please select a valid image file.', 'error');
+                return;
+            }
+            ToolUtils.hideStatus(statusMsg);
+            originalFileName = file.name.replace(/\.[^.]+$/, '');
+
+            if (previewURL) URL.revokeObjectURL(previewURL);
+            previewURL = URL.createObjectURL(file);
+
+            const img = new Image();
+            img.onload = () => {
+                originalImage = img;
+                // Show original on canvas
+                previewCanvas.width = img.width;
+                previewCanvas.height = img.height;
+                previewCanvas.getContext('2d').drawImage(img, 0, 0);
+                editorSection.style.display = 'block';
+                downloadBtn.style.display = 'none';
+                resultBlob = null;
+            };
+            img.onerror = () => ToolUtils.showStatus(statusMsg, 'Failed to load image.', 'error');
+            img.src = previewURL;
+        }
+
+        applyBtn.addEventListener('click', () => {
+            if (!originalImage) return;
+
+            const text = watermarkText.value.trim();
+            if (!text) {
+                ToolUtils.showStatus(statusMsg, 'Please enter watermark text.', 'error');
+                return;
+            }
+
+            const w = originalImage.width;
+            const h = originalImage.height;
+            const size = parseInt(fontSizeSlider.value);
+            const alpha = parseInt(opacitySlider.value) / 100;
+            const pos = positionSelect.value;
+
+            previewCanvas.width = w;
+            previewCanvas.height = h;
+            const ctx = previewCanvas.getContext('2d');
+            ctx.drawImage(originalImage, 0, 0);
+
+            ctx.font = 'bold ' + size + 'px Arial, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, ' + alpha + ')';
+            ctx.strokeStyle = 'rgba(0, 0, 0, ' + (alpha * 0.5) + ')';
+            ctx.lineWidth = 1;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+
+            const pad = size;
+
+            if (pos === 'tiled') {
+                ctx.save();
+                ctx.rotate(-Math.PI / 6);
+                const metrics = ctx.measureText(text);
+                const tw = metrics.width + size * 2;
+                const th = size * 3;
+                for (let y = -h; y < h * 2; y += th) {
+                    for (let x = -w; x < w * 2; x += tw) {
+                        ctx.fillText(text, x, y);
+                        ctx.strokeText(text, x, y);
+                    }
+                }
+                ctx.restore();
+            } else {
+                let tx, ty;
+                switch (pos) {
+                    case 'center':
+                        tx = w / 2; ty = h / 2;
+                        break;
+                    case 'top-left':
+                        ctx.textAlign = 'left';
+                        tx = pad; ty = pad;
+                        break;
+                    case 'top-right':
+                        ctx.textAlign = 'right';
+                        tx = w - pad; ty = pad;
+                        break;
+                    case 'bottom-left':
+                        ctx.textAlign = 'left';
+                        tx = pad; ty = h - pad;
+                        break;
+                    case 'bottom-right':
+                        ctx.textAlign = 'right';
+                        tx = w - pad; ty = h - pad;
+                        break;
+                }
+                ctx.fillText(text, tx, ty);
+                ctx.strokeText(text, tx, ty);
+            }
+
+            previewCanvas.toBlob((blob) => {
+                resultBlob = blob;
+                downloadBtn.style.display = 'inline-flex';
+                ToolUtils.showStatus(statusMsg, 'Watermark applied! (' + ToolUtils.formatFileSize(blob.size) + ')', 'success');
+            }, 'image/png');
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (resultBlob) {
+                ToolUtils.downloadBlob(resultBlob, originalFileName + '-watermarked.png');
+            }
+        });
+    </script>
+</body>
+</html>

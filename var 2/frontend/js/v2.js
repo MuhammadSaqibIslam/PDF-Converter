@@ -1,4 +1,4 @@
-// PDF Flare Version 2 — JavaScript
+// PDF Forge Version 2 — JavaScript
 
 document.addEventListener('DOMContentLoaded', () => {
 

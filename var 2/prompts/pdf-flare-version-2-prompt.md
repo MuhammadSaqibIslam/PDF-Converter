@@ -1,4 +1,4 @@
-# PDF Flare --- Version 2 Website Build & Functional Implementation Prompt
+# PDF Forge --- Version 2 Website Build & Functional Implementation Prompt
 
 ## 1. Role
 
@@ -14,7 +14,7 @@ testing.
 
 ## 2. Task
 
-Create **PDF Flare Version 2** based on the supplied screenshot. The
+Create **PDF Forge Version 2** based on the supplied screenshot. The
 reference shows a modern PDF tools directory with compact top
 navigation, a centered headline, category chips, and a grid of
 individual PDF tool cards.
@@ -27,7 +27,7 @@ Build a polished, responsive, browser-based web application. **Do not
 convert it to Electron or add SQLite.** Use the existing project
 architecture wherever possible.
 
-Create an original PDF Flare interface and brand identity. Do not copy
+Create an original PDF Forge interface and brand identity. Do not copy
 the reference brand's logo or imply affiliation with another service.
 
 ## 3. Inspect the Existing Project First
@@ -72,20 +72,20 @@ separated page or route without breaking Version 1.
 -   Primary text: `#292936`.
 -   Secondary text: `#777784`.
 -   Borders: `#E5E5EC`.
--   PDF Flare accent: approximately `#F04B2B`.
+-   PDF Forge accent: approximately `#F04B2B`.
 -   Supporting icon colors: muted orange, blue, green, purple, teal, and
     yellow.
 -   Card radius: approximately `8–12px`.
 -   Use consistent spacing based on multiples of `4px` or `8px`.
 
 Do not use the old dark theme for this Version 2 home page. Match the
-supplied light-theme reference while retaining PDF Flare branding.
+supplied light-theme reference while retaining PDF Forge branding.
 
 ## 5. Page Layout
 
 ### A. Compact top navigation
 
-Create a slim header with: - Left: PDF Flare logo and wordmark. - Main
+Create a slim header with: - Left: PDF Forge logo and wordmark. - Main
 navigation: Merge PDF, Split PDF, Compress PDF, Convert PDF dropdown,
 All PDF Tools dropdown. - Right: Login and Sign Up actions, plus a
 compact apps/menu icon if appropriate. - Thin bottom divider and
@@ -106,7 +106,7 @@ Use a centered headline with a hierarchy similar to the screenshot:
 
 **Every PDF tool you need in one place**
 
-Write original supporting copy explaining that PDF Flare helps users
+Write original supporting copy explaining that PDF Forge helps users
 merge, split, compress, convert, edit, sign, and organize PDFs online.
 
 -   Large, bold heading.
@@ -374,7 +374,7 @@ existing project.
 ## 16. Definition of Done
 
 The task is complete only when: - Version 2 visually matches the
-reference layout and light theme. - PDF Flare branding remains
+reference layout and light theme. - PDF Forge branding remains
 original. - All listed tool cards are present. - Every card has a valid
 destination. - Icons render consistently and correctly. - Category
 filters work. - All visible navigation links work. - Implemented tools
@@ -385,7 +385,7 @@ functionality remains intact.
 
 ## Final Instruction
 
-Build a complete Version 2 of PDF Flare using the supplied screenshot as
+Build a complete Version 2 of PDF Forge using the supplied screenshot as
 the visual reference and Version 1's functional requirements as the
 baseline. Prioritize visual fidelity, real file-processing
 functionality, consistent icons, and reliable navigation. Preserve
